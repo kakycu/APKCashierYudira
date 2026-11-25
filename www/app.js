@@ -798,7 +798,8 @@ function exitApp(){
 }
 
 /* ============================================================
-   ACTUALIZACIONES (GitHub Releases; solo se consulta al pulsar)
+   ACTUALIZACIONES (GitHub Releases)
+   En la APK se comprueba al abrir; en la web solo al pulsar.
    ============================================================ */
 function compareVersions(a, b){
   const parse = v => String(v || '').replace(/^v/i,'').split(/[.\-]/).map(x => parseInt(x,10) || 0);
@@ -809,37 +810,52 @@ function compareVersions(a, b){
   }
   return 0;
 }
+const UPDATE_TIMEOUT_MS = 7000;
 let updateAssetUrl = RELEASES_PAGE;
-async function checkForUpdates(){
+let lastAutoCheck = 0;
+async function checkForUpdates(opts){
+  const auto = !!(opts && opts.auto);
   const btn = $('#sideUpdate');
   const label = $('#sideVersion');
-  if(!btn || btn.disabled) return;
-  btn.disabled = true;
-  label.textContent = '…';
+  if(!auto && btn && btn.disabled) return;
+  if(auto){
+    if(Date.now() - lastAutoCheck < 60000) return;
+    lastAutoCheck = Date.now();
+  }else{
+    if(btn) btn.disabled = true;
+    if(label) label.textContent = '…';
+  }
+
+  const controller = (typeof AbortController === 'function') ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), UPDATE_TIMEOUT_MS) : null;
   try{
     const res = await fetch(RELEASES_API, {
       cache:'no-store',
-      headers:{ Accept:'application/vnd.github+json' }
+      headers:{ Accept:'application/vnd.github+json' },
+      signal: controller ? controller.signal : undefined
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const rel = await res.json();
     const latest = String(rel.tag_name || APP_VERSION);
     const apk = (rel.assets || []).find(a => /\.apk$/i.test(a.name || ''));
     updateAssetUrl = (apk && apk.browser_download_url) || rel.html_url || RELEASES_PAGE;
+    if(label) label.textContent = latest;
 
     if(compareVersions(latest, APP_VERSION) > 0){
       $('#updateTitle').textContent = `Versión ${latest} disponible`;
       $('#updateMsg').textContent = `Tienes la versión ${APP_VERSION}. Se abrirá GitHub para descargar el APK actualizado.`;
       $('#updateOverlay').classList.add('show');
-    }else{
+    }else if(!auto){
       toast(`Ya tienes la versión más reciente (${APP_VERSION})`, 'success');
     }
-    label.textContent = latest;
   }catch(e){
-    label.textContent = 'v' + APP_VERSION;
-    toast('Sin conexión: no se pudo buscar actualizaciones', 'error');
+    if(!auto){
+      if(label) label.textContent = 'v' + APP_VERSION;
+      toast('Sin conexión: no se pudo buscar actualizaciones', 'error');
+    }
   }finally{
-    btn.disabled = false;
+    if(timer) clearTimeout(timer);
+    if(!auto && btn) btn.disabled = false;
   }
 }
 
@@ -1015,6 +1031,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   if(schemeQuery.addEventListener) schemeQuery.addEventListener('change', onSchemeChange);
   else if(schemeQuery.addListener) schemeQuery.addListener(onSchemeChange);
+
+  /* Al abrir la APK (tras pasar la intro) se busca versión nueva en silencio;
+     si no hay conexión no se muestra ningún aviso y la app sigue local. */
+  if(isNative && sessionStorage.getItem('cashier_entered') === '1'){
+    setTimeout(() => checkForUpdates({ auto:true }), 1200);
+  }
 
   window.addEventListener('orientationchange', () => setTimeout(() => refreshTotals(), 200));
 });

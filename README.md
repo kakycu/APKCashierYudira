@@ -1,6 +1,6 @@
 # ChashierYudira (antes Visiones - CashFlow)
 
-Calculadora de billetes multidenominación, 100 % local (sin peticiones de red).
+Calculadora de billetes multidenominación, 100 % local: no envía datos ni depende de la red para funcionar. Solo consulta GitHub para detectar versiones nuevas (en la APK, al abrir; en la web, al pulsar el botón).
 
 Repositorio: https://github.com/kakycu/APKCashierYudira
 
@@ -8,13 +8,14 @@ El APK generado se llama **`ChashierYudira.apk`**. Las tarjetas del historial mu
 
 ## Pantalla de entrada
 
-Al abrir la app (también en la APK) se muestra `www/intro.html` con esta coreografía: entra el círculo (`01_Circulo.png`) con la misma transición del original, después aparece el unicornio (`02_Unicornio.png`) más pequeño, luego `Yudira.png` cae desde arriba en grande y queda centrada dentro del círculo, sin recuadro ni borde (solo su recorte PNG con `drop-shadow`), y finalmente el unicornio sube por delante de la foto y se coloca encima del círculo. Debajo aparece el botón **ENTRAR AL CASHIER DE YUDIRA**, que guarda un flag en `sessionStorage` y abre `index.html`. Bajo la versión se muestra el crédito `© Unicornio Software® - 2026` con el unicornio en blanco completo y sin glow; el unicornio animado sobre Yudira lleva un glow blanco/cian más visible y termina un poco más pequeño. Todos los botones incluyen icono, incluidos los diálogos.
+Al abrir la app (también en la APK) se muestra `www/intro.html` con esta coreografía: entra el círculo (`01_Circulo.png`) con la misma transición del original, después aparece el unicornio (`02_Unicornio.png`) más pequeño, luego `Yudira.png` cae desde arriba en grande y queda centrada dentro del círculo, sin recuadro ni borde (solo su recorte PNG con `drop-shadow`), y finalmente el unicornio sube por delante de la foto y se coloca encima del círculo. Debajo aparece el botón **ENTRAR AL CASHIER DE YUDIRA**, que guarda un flag en `sessionStorage` y abre `index.html`. Bajo la versión se muestran el crédito `© Unicornio Software® - 2026` y la línea `En colaboración con MiPyMe "Visiones"`, con el unicornio en blanco completo y sin glow; el unicornio animado sobre Yudira lleva un glow blanco/cian más visible y termina un poco más pequeño. El icono de la app es `cashier.png`. Todos los botones incluyen icono, incluidos los diálogos.
 
 ## Menú lateral y actualizaciones (v2.0.0)
 
 - Botón de hamburguesa en la barra de título: abre una barra lateral con las cuatro secciones, acciones rápidas (guardar, vaciar, tema, sonidos, preferencias), **Cerrar aplicación** y **Buscar actualizaciones**.
 - El cierre usa `App.exitApp()` en Android y una confirmación + recarga en navegador; el botón Atrás cierra primero el menú.
-- La búsqueda de versiones es **manual y opcional**: consulta el último *release* de GitHub solo al pulsarla. Si no hay conexión, avisa y la app sigue funcionando sin red. Si hay una versión nueva, muestra un diálogo con el enlace directo al APK; en Android se abre con `window.open(url, '_system')`.
+- En la **APK**, al abrir la app (después de la intro) se comprueba en silencio el último *release* de GitHub; si hay una versión nueva se muestra el diálogo con el enlace directo al APK. Si no hay conexión, no se muestra ningún aviso y la app sigue funcionando sin red.
+- En la **web**, la búsqueda sigue siendo manual: solo consulta GitHub al pulsar el botón. Si no hay conexión, avisa y la app sigue funcionando. En ambos casos el diálogo lleva el enlace al APK; en Android se abre con `window.open(url, '_system')`.
 - Versiones: `APP_VERSION` en `www/app.js` debe coincidir con el tag de la release de GitHub (`v2.0.0`).
 
 ## Compilar desde GitHub
@@ -29,7 +30,7 @@ El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `
   - `anim/` (solo `01_Circulo.png`, `02_Unicornio.png` y `Yudira.png`, usados en la animación)
   - `fonts/` (Inter + JetBrains Mono, `.woff2` con licencias OFL)
   - `vendor/fontawesome/` (iconos locales)
-  - `icons/` (iconos 192/512 y maskable generados desde `visioneslogo.png`)
+  - `icons/` (`cashier.png` original e iconos 192/512 y maskable generados desde él)
   - `manifest.webmanifest`
   - `sounds/` (vacío; los sonidos se generan con Web Audio)
 
@@ -61,7 +62,7 @@ npx cap add android
 npx cap sync
 ```
 
-`capacitor.config.json` debe conservar `webDir: "www"` y `androidScheme: "https"`. Después abre `android/` en Android Studio y genera un APK firmado (*Build → Generate Signed Bundle / APK*). `minSdkVersion 22`, `targetSdkVersion 35`.
+`capacitor.config.json` debe conservar `webDir: "www"` y `androidScheme: "https"`. Después abre `android/` en Android Studio y genera un APK firmado (*Build → Generate Signed Bundle / APK*). `minSdkVersion 24`, `targetSdkVersion 36`. El icono se genera desde `cashier.png` en `www/icons/` y en `android/app/src/main/res/mipmap-*/`.
 
 Cada vez que cambies `www/`: `npx cap sync` y recompilar.
 
