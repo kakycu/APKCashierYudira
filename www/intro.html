@@ -65,16 +65,26 @@
   }
 
   /* Yudira entra grande desde arriba y se asienta pequeña en el centro del círculo. */
-  .foto{z-index:3;opacity:1;transform:none;transition:none}
+  .foto{z-index:3;opacity:1;transform:none;transition:none;pointer-events:auto}
   .foto-movil{
     position:relative;width:72%;height:86%;opacity:0;
     transform:translateY(-78vh) scale(1.55);
   }
+  /* Envoltorio separado para que el hover no pelee con la animación de caída/respiración. */
+  .foto-hover{
+    position:absolute;inset:0;display:block;transform:scale(1);transform-origin:center;
+    transition:transform .28s cubic-bezier(.2,.8,.2,1);
+  }
+  .foto.is-on .foto-movil:hover .foto-hover{transform:scale(1.3)}
   .foto.is-on .foto-movil{animation:caerYudira 1.75s cubic-bezier(.18,.82,.22,1) both}
   .foto-movil img{
     width:100%;height:100%;object-fit:contain;
     background:transparent;border:0;outline:0;
     filter:drop-shadow(0 16px 32px rgba(0,0,0,.55));
+    transition:filter .28s ease;
+  }
+  .foto.is-on .foto-movil:hover img{
+    filter:drop-shadow(0 18px 36px rgba(0,0,0,.6)) drop-shadow(0 0 10px rgba(0,212,255,.4));
   }
   .foto.is-on .foto-movil img{animation:respirar 3s ease-in-out 2s infinite}
   .sheen{
@@ -175,8 +185,10 @@
       <div class="capa unicornio" id="capaUnicornio" aria-hidden="true"><img src="anim/02_Unicornio.png" alt="" decoding="async"></div>
       <div class="capa foto" id="capaFoto">
         <div class="foto-movil">
-          <img src="anim/Yudira.png" alt="Yudira" decoding="async">
-          <span class="sheen" aria-hidden="true"></span>
+          <span class="foto-hover">
+            <img src="anim/Yudira.png" alt="Yudira" decoding="async">
+            <span class="sheen" aria-hidden="true"></span>
+          </span>
         </div>
       </div>
     </div>
