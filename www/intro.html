@@ -57,7 +57,11 @@
   .unicornio.is-on img{animation:flotar 2.8s ease-in-out 1.8s infinite alternate}
   /* Tras caer Yudira, el unicornio sube y se coloca encima del círculo. */
   .unicornio.sube{z-index:4;animation:subirUnicornio .9s cubic-bezier(.2,.8,.2,1) both}
-  .unicornio.sube img{filter:drop-shadow(0 10px 22px rgba(0,212,255,.45))}
+  .unicornio.sube img{
+    filter:drop-shadow(0 0 5px rgba(255,255,255,1))
+           drop-shadow(0 0 14px rgba(0,212,255,.95))
+           drop-shadow(0 10px 28px rgba(0,212,255,.7));
+  }
 
   /* Yudira entra grande desde arriba y se asienta pequeña en el centro del círculo. */
   .foto{z-index:3;opacity:1;transform:none;transition:none}
@@ -121,7 +125,7 @@
   }
   .credito img{
     width:26px;height:auto;
-    filter:drop-shadow(0 0 4px rgba(255,255,255,.95)) drop-shadow(0 0 12px rgba(255,255,255,.6));
+    filter:brightness(0) invert(1);
   }
 
   .marca,.subtitulo,.entrar,.pie,.credito{opacity:0;transform:translateY(10px)}
@@ -183,7 +187,7 @@
     <p class="pie">Versión 2.0.0 · 100 % local</p>
     <div class="credito">
       <img src="anim/02_Unicornio.png" alt="" aria-hidden="true">
-      <span>(c) Unicornio Software(r) - 2026</span>
+      <span>© Unicornio Software® - 2026</span>
     </div>
   </main>
 
