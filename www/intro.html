@@ -115,8 +115,17 @@
   .entrar:focus-visible{outline:2px solid #fff;outline-offset:3px}
   .pie{font-size:10.5px;color:var(--muted);opacity:.8}
 
-  .marca,.subtitulo,.entrar,.pie{opacity:0;transform:translateY(10px)}
-  .intro.listos .marca,.intro.listos .subtitulo,.intro.listos .entrar,.intro.listos .pie{
+  .credito{
+    margin-top:2px;display:flex;align-items:center;justify-content:center;gap:7px;
+    font-size:10.5px;color:#dbeafe;letter-spacing:.02em;
+  }
+  .credito img{
+    width:26px;height:auto;
+    filter:drop-shadow(0 0 4px rgba(255,255,255,.95)) drop-shadow(0 0 12px rgba(255,255,255,.6));
+  }
+
+  .marca,.subtitulo,.entrar,.pie,.credito{opacity:0;transform:translateY(10px)}
+  .intro.listos .marca,.intro.listos .subtitulo,.intro.listos .entrar,.intro.listos .pie,.intro.listos .credito{
     opacity:1;transform:translateY(0);
     transition:opacity .55s ease,transform .55s ease;
   }
@@ -124,6 +133,7 @@
   .intro.listos .subtitulo{transition-delay:.12s}
   .intro.listos .entrar{transition-delay:.2s}
   .intro.listos .pie{transition-delay:.28s}
+  .intro.listos .credito{transition-delay:.36s}
 
   /* Barra de progreso como en la animación original. */
   .barra{
@@ -146,7 +156,7 @@
     *,*::before,*::after{animation:none!important;transition:none!important}
     .foto-movil{opacity:1;transform:none}
     .unicornio.sube{transform:scale(.92) translateY(-56%)}
-    .marca,.subtitulo,.entrar,.pie{opacity:1;transform:none}
+    .marca,.subtitulo,.entrar,.pie,.credito{opacity:1;transform:none}
   }
 </style>
 </head>
@@ -171,6 +181,10 @@
 
     <button type="button" class="entrar" id="entrarBtn"><i class="fas fa-arrow-right"></i> ENTRAR AL CASHIER DE YUDIRA</button>
     <p class="pie">Versión 2.0.0 · 100 % local</p>
+    <div class="credito">
+      <img src="anim/02_Unicornio.png" alt="" aria-hidden="true">
+      <span>(c) Unicornio Software(r) - 2026</span>
+    </div>
   </main>
 
   <div class="barra" aria-hidden="true"><span id="barraProgreso"></span></div>
