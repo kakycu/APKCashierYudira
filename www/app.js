@@ -3,7 +3,7 @@
    ============================================================ */
 const STORAGE_KEY = 'visiones_cashflow_v2';
 const THEME_KEY = 'visiones_theme';
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 const RELEASES_API = 'https://api.github.com/repos/kakycu/APKCashierYudira/releases/latest';
 const RELEASES_PAGE = 'https://github.com/kakycu/APKCashierYudira/releases';
 
@@ -53,7 +53,7 @@ let state = {
   allDenoms: [...DEFAULT_DENOMS],
   quantities: {},
   history: [],
-  prefs: { confetti: true, autoSave: false, sound: false },
+  prefs: { confetti: true, autoSave: false, sound: true },
   currency: { code:'CUP', symbol:'$', locale:'es-CU' }
 };
 
