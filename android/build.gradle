@@ -2,12 +2,10 @@
 // En CI se usan los repositorios oficiales. Los espejos solo se activan con -PuseMirrors
 // para compilaciones locales donde Google Maven no sea accesible.
 
-def usarEspejos = project.hasProperty('useMirrors')
-
 buildscript {
     
     repositories {
-        if (usarEspejos) {
+        if (project.hasProperty('useMirrors')) {
             maven { url 'https://maven.aliyun.com/repository/google' }
             maven { url 'https://maven.aliyun.com/repository/public' }
             maven { url 'https://repo.huaweicloud.com/repository/maven' }
@@ -28,7 +26,7 @@ apply from: "variables.gradle"
 
 allprojects {
     repositories {
-        if (usarEspejos) {
+        if (project.hasProperty('useMirrors')) {
             maven { url 'https://maven.aliyun.com/repository/google' }
             maven { url 'https://maven.aliyun.com/repository/public' }
             maven { url 'https://repo.huaweicloud.com/repository/maven' }
