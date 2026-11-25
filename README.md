@@ -64,7 +64,7 @@ npx cap sync
 
 `capacitor.config.json` debe conservar `webDir: "www"` y `androidScheme: "https"`. Después abre `android/` en Android Studio y genera un APK firmado (*Build → Generate Signed Bundle / APK*). `minSdkVersion 24`, `targetSdkVersion 36`. El icono se genera desde `cashier.png` en `www/icons/` y en `android/app/src/main/res/mipmap-*/`.
 
-Cada vez que cambies `www/`: `npx cap sync` y recompilar.
+Cada vez que cambies `www/`: `npx cap sync` y recompilar. La compilación usa los repositorios oficiales de Google y Maven Central; si estás en una red donde Google Maven no es accesible, añade `-PuseMirrors` a `./gradlew assembleDebug` para activar los espejos.
 
 ## Pruebas recomendadas
 
