@@ -3,6 +3,9 @@
    ============================================================ */
 const STORAGE_KEY = 'visiones_cashflow_v2';
 const THEME_KEY = 'visiones_theme';
+const APP_VERSION = '2.0.0';
+const RELEASES_API = 'https://api.github.com/repos/kakycu/APKCashierYudira/releases/latest';
+const RELEASES_PAGE = 'https://github.com/kakycu/APKCashierYudira/releases';
 
 /* ============================================================
    PUENTE NATIVO (Capacitor) / FALLBACK WEB
@@ -112,6 +115,7 @@ function saveState(){
     localStorage.setItem(STORAGE_KEY, raw);
     mirrorToNative(STORAGE_KEY, raw);
   }catch(e){}
+  updateDrawerState();
 }
 
 function loadState(){
@@ -688,6 +692,7 @@ function activateTab(name){
     t.setAttribute('aria-selected', active ? 'true' : 'false');
   });
   $$('.content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+  $$('.side-link[data-gototab]').forEach(b => b.classList.toggle('active', b.dataset.gototab === name));
   if(name === 'stats') renderStats();
   if(name === 'history') renderHistory($('#searchHistory').value);
   if(name === 'denoms') renderDenomList();
@@ -746,6 +751,98 @@ function askNote(){
   });
 }
 
+/* ============================================================
+   BARRA LATERAL Y CIERRE DE LA APP
+   ============================================================ */
+function isDrawerOpen(){
+  const s = $('#sidebar');
+  return !!(s && s.classList.contains('open'));
+}
+function openDrawer(){
+  if(isDrawerOpen()) return;
+  $('#sidebar').classList.add('open');
+  $('#sidebar').setAttribute('aria-hidden','false');
+  $('#drawerOverlay').classList.add('show');
+  document.body.classList.add('drawer-open');
+  $('#menuToggle').setAttribute('aria-expanded','true');
+  setTimeout(() => $('#drawerClose').focus(), 120);
+}
+function closeDrawer(){
+  if(!isDrawerOpen()) return;
+  $('#sidebar').classList.remove('open');
+  $('#sidebar').setAttribute('aria-hidden','true');
+  $('#drawerOverlay').classList.remove('show');
+  document.body.classList.remove('drawer-open');
+  $('#menuToggle').setAttribute('aria-expanded','false');
+}
+function toggleDrawer(){ isDrawerOpen() ? closeDrawer() : openDrawer(); }
+
+function updateDrawerState(){
+  const badge = $('#sideHistBadge');
+  if(badge) badge.textContent = state.history.length;
+  const sound = $('#sideSoundState');
+  if(sound) sound.textContent = state.prefs.sound ? 'Sí' : 'No';
+  const version = $('#sideVersion');
+  if(version && version.textContent === '…') return;
+  if(version) version.textContent = 'v' + APP_VERSION;
+}
+function exitApp(){
+  confirmModal(
+    'Cerrar aplicación',
+    isNative ? '¿Cerrar ChashierYudira?' : 'Una pestaña web no puede cerrarse sola. ¿Recargar la aplicación?'
+  ).then(ok => {
+    if(!ok) return;
+    if(isNative) nativeCall('App','exitApp');
+    else location.reload();
+  });
+}
+
+/* ============================================================
+   ACTUALIZACIONES (GitHub Releases; solo se consulta al pulsar)
+   ============================================================ */
+function compareVersions(a, b){
+  const parse = v => String(v || '').replace(/^v/i,'').split(/[.\-]/).map(x => parseInt(x,10) || 0);
+  const pa = parse(a), pb = parse(b);
+  for(let i=0;i<Math.max(pa.length,pb.length);i++){
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if(d) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+let updateAssetUrl = RELEASES_PAGE;
+async function checkForUpdates(){
+  const btn = $('#sideUpdate');
+  const label = $('#sideVersion');
+  if(!btn || btn.disabled) return;
+  btn.disabled = true;
+  label.textContent = '…';
+  try{
+    const res = await fetch(RELEASES_API, {
+      cache:'no-store',
+      headers:{ Accept:'application/vnd.github+json' }
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rel = await res.json();
+    const latest = String(rel.tag_name || APP_VERSION);
+    const apk = (rel.assets || []).find(a => /\.apk$/i.test(a.name || ''));
+    updateAssetUrl = (apk && apk.browser_download_url) || rel.html_url || RELEASES_PAGE;
+
+    if(compareVersions(latest, APP_VERSION) > 0){
+      $('#updateTitle').textContent = `Versión ${latest} disponible`;
+      $('#updateMsg').textContent = `Tienes la versión ${APP_VERSION}. Se abrirá GitHub para descargar el APK actualizado.`;
+      $('#updateOverlay').classList.add('show');
+    }else{
+      toast(`Ya tienes la versión más reciente (${APP_VERSION})`, 'success');
+    }
+    label.textContent = latest;
+  }catch(e){
+    label.textContent = 'v' + APP_VERSION;
+    toast('Sin conexión: no se pudo buscar actualizaciones', 'error');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
 /* Botón Atrás de Android y estilos nativos. */
 function initNativeUI(){
   if(!isNative) return;
@@ -753,12 +850,11 @@ function initNativeUI(){
   const App = NativePlugins.App;
   if(App && typeof App.addListener === 'function'){
     App.addListener('backButton', ({ canGoBack } = {}) => {
+      if(isDrawerOpen()){ closeDrawer(); return; }
       const active = document.querySelector('.tab.active');
       if(active && active.dataset.tab !== 'calc'){ activateTab('calc'); return; }
       if(canGoBack && window.history.length > 1){ window.history.back(); return; }
-      confirmModal('Salir de Visiones', '¿Cerrar la aplicación?').then(ok => {
-        if(ok) nativeCall('App','exitApp');
-      });
+      exitApp();
     });
   }
 }
@@ -771,6 +867,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   initNativeUI();
   applyTheme(getPreferredTheme());
   $('#themeToggle').addEventListener('click', toggleTheme);
+
+  /* Barra lateral */
+  updateDrawerState();
+  $('#menuToggle').addEventListener('click', toggleDrawer);
+  $('#drawerClose').addEventListener('click', closeDrawer);
+  $('#drawerOverlay').addEventListener('click', closeDrawer);
+  $$('.side-link[data-gototab]').forEach(b => b.addEventListener('click', () => {
+    activateTab(b.dataset.gototab);
+    closeDrawer();
+    beep(650, 30);
+  }));
+  $('#sideSave').addEventListener('click', () => { closeDrawer(); $('#btnSaveHistory').click(); });
+  $('#sideClear').addEventListener('click', () => { closeDrawer(); $('#btnClearAll').click(); });
+  $('#sideTheme').addEventListener('click', toggleTheme);
+  $('#sideSound').addEventListener('click', () => {
+    const cb = $('#prefSound');
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change'));
+    updateDrawerState();
+  });
+  $('#sidePrefs').addEventListener('click', () => { activateTab('denoms'); closeDrawer(); });
+  $('#sideExit').addEventListener('click', () => { closeDrawer(); exitApp(); });
+  $('#sideUpdate').addEventListener('click', checkForUpdates);
+  $('#updateClose').addEventListener('click', () => $('#updateOverlay').classList.remove('show'));
+  $('#updateOverlay').addEventListener('click', e => {
+    if(e.target.id === 'updateOverlay') $('#updateOverlay').classList.remove('show');
+  });
+  $('#updateDownload').addEventListener('click', () => {
+    if(isNative) window.open(updateAssetUrl, '_system');
+    else window.open(updateAssetUrl, '_blank', 'noopener');
+  });
 
   /* Android solo desbloquea el audio tras una interacción real. */
   document.addEventListener('pointerdown', () => {
@@ -873,12 +1000,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const app = document.querySelector('.app');
     app.style.maxWidth = app.style.maxWidth === '100%' ? '1180px' : '100%';
   });
-  $('#winClose').addEventListener('click', async () => {
-    const ok = await confirmModal('Cerrar aplicación', 'Esto es una demo web. ¿Deseas "cerrar"? (recargar)');
-    if(ok) location.reload();
-  });
+  $('#winClose').addEventListener('click', exitApp);
 
   document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && isDrawerOpen()){ e.preventDefault(); closeDrawer(); return; }
     if(e.ctrlKey && e.key === 's'){ e.preventDefault(); saveToHistory(); }
     if(e.ctrlKey && e.key === 'k'){ e.preventDefault(); $('#searchDenom').focus(); }
     if(e.ctrlKey && e.shiftKey && e.key === 'L'){ e.preventDefault(); toggleTheme(); }

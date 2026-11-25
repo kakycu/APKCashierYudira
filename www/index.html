@@ -20,6 +20,7 @@
 <div class="app" role="application">
   <!-- TITLEBAR -->
   <div class="titlebar">
+    <button class="menu-btn" id="menuToggle" title="Abrir menú de opciones" aria-label="Abrir menú de opciones" aria-controls="sidebar" aria-expanded="false"><i class="fas fa-bars"></i></button>
     <div class="app-logo">
       <img src="visioneslogo.png" alt="Visiones Logo" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
       <div class="fallback"><i class="fas fa-eye"></i></div>
@@ -174,6 +175,44 @@
   </section>
 </div>
 
+<!-- BARRA LATERAL DE OPCIONES -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="sidebar" id="sidebar" role="dialog" aria-modal="true" aria-label="Menú de opciones" aria-hidden="true">
+  <div class="sidebar-head">
+    <img src="visioneslogo.png" alt="" onerror="this.style.display='none'">
+    <div class="sidebar-brand">
+      <strong>ChashierYudira</strong>
+      <small>Calculadora de billetes</small>
+    </div>
+    <button class="sidebar-close" id="drawerClose" title="Cerrar menú" aria-label="Cerrar menú"><i class="fas fa-xmark"></i></button>
+  </div>
+
+  <div class="sidebar-scroll">
+    <div class="sidebar-label">Secciones</div>
+    <nav class="sidebar-nav" aria-label="Secciones de la app">
+      <button class="side-link active" data-gototab="calc"><i class="fas fa-calculator"></i><span>Calculadora</span></button>
+      <button class="side-link" data-gototab="history"><i class="fas fa-clock-rotate-left"></i><span>Historial</span><span class="side-badge" id="sideHistBadge">0</span></button>
+      <button class="side-link" data-gototab="denoms"><i class="fas fa-list-check"></i><span>Denominaciones</span></button>
+      <button class="side-link" data-gototab="stats"><i class="fas fa-chart-simple"></i><span>Estadísticas</span></button>
+    </nav>
+
+    <div class="sidebar-label">Acciones</div>
+    <div class="sidebar-nav">
+      <button class="side-link" id="sideSave"><i class="fas fa-floppy-disk"></i><span>Guardar registro</span></button>
+      <button class="side-link" id="sideClear"><i class="fas fa-eraser"></i><span>Vaciar cantidades</span></button>
+      <button class="side-link" id="sideTheme"><i class="fas fa-circle-half-stroke"></i><span>Cambiar tema</span></button>
+      <button class="side-link" id="sideSound"><i class="fas fa-volume"></i><span>Sonidos</span><span class="side-state" id="sideSoundState">No</span></button>
+      <button class="side-link" id="sidePrefs"><i class="fas fa-gear"></i><span>Preferencias</span></button>
+      <button class="side-link" id="sideUpdate"><i class="fas fa-download"></i><span>Buscar actualizaciones</span><span class="side-state" id="sideVersion">v2.0.0</span></button>
+    </div>
+  </div>
+
+  <div class="sidebar-foot">
+    <button class="side-link danger" id="sideExit"><i class="fas fa-right-from-bracket"></i><span>Cerrar aplicación</span></button>
+    <small>Versión 2.0 · 100 % local</small>
+  </div>
+</aside>
+
 <!-- TOASTS -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -198,6 +237,18 @@
     <div class="modal-actions">
       <button class="btn" id="noteCancel">Sin nota</button>
       <button class="btn btn-primary" id="noteOk">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ACTUALIZACIÓN -->
+<div class="modal-overlay" id="updateOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
+    <h3><i class="fas fa-download" style="color:var(--accent)"></i> <span id="updateTitle">Nueva versión disponible</span></h3>
+    <p id="updateMsg"></p>
+    <div class="modal-actions">
+      <button class="btn" id="updateClose">Ahora no</button>
+      <button class="btn btn-primary" id="updateDownload"><i class="fas fa-download"></i> Descargar APK</button>
     </div>
   </div>
 </div>

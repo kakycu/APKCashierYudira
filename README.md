@@ -6,6 +6,13 @@ Repositorio: https://github.com/kakycu/APKCashierYudira
 
 El APK generado se llama **`ChashierYudira.apk`**. Las tarjetas del historial muestran el desglose de billetes (por ejemplo `7×10,000`, `1×500`).
 
+## Menú lateral y actualizaciones (v2.0.0)
+
+- Botón de hamburguesa en la barra de título: abre una barra lateral con las cuatro secciones, acciones rápidas (guardar, vaciar, tema, sonidos, preferencias), **Cerrar aplicación** y **Buscar actualizaciones**.
+- El cierre usa `App.exitApp()` en Android y una confirmación + recarga en navegador; el botón Atrás cierra primero el menú.
+- La búsqueda de versiones es **manual y opcional**: consulta el último *release* de GitHub solo al pulsarla. Si no hay conexión, avisa y la app sigue funcionando sin red. Si hay una versión nueva, muestra un diálogo con el enlace directo al APK; en Android se abre con `window.open(url, '_system')`.
+- Versiones: `APP_VERSION` en `www/app.js` debe coincidir con el tag de la release de GitHub (`v2.0.0`).
+
 ## Compilar desde GitHub
 
 El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `push` a `main`. También puedes lanzarlo manualmente: pestaña **Actions** → *Compilar APK ChashierYudira* → **Run workflow**. El APK queda como artefacto descargable (`ChashierYudira`).
