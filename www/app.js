@@ -247,6 +247,13 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/* Muestra u oculta la X que quita el filtro del buscador de denominaciones. */
+function syncDenomFilterClear(){
+  const input = $('#searchDenom');
+  const btn = $('#clearDenomFilter');
+  if(input && btn) btn.hidden = input.value.length === 0;
+}
+
 /* ============================================================
    RENDER: GRID DE BILLETES
    ============================================================ */
@@ -1030,6 +1037,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   syncCurrencySelect();
 
   renderBills();
+  syncDenomFilterClear();
   renderHistory();
   renderDenomList();
   refreshTotals();
@@ -1054,7 +1062,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(e.key === 'Enter'){ e.preventDefault(); $('#applyCustomCurrency').click(); }
   });
 
-  $('#searchDenom').addEventListener('input', e => renderBills(e.target.value));
+  $('#searchDenom').addEventListener('input', e => { renderBills(e.target.value); syncDenomFilterClear(); });
+  $('#clearDenomFilter').addEventListener('click', () => {
+    const input = $('#searchDenom');
+    input.value = '';
+    syncDenomFilterClear();
+    renderBills('');
+    input.focus();
+    beep(650, 30);
+  });
   $('#searchHistory').addEventListener('input', e => renderHistory(e.target.value));
 
   $('#btnClearAll').addEventListener('click', async () => {

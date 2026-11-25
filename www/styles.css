@@ -256,6 +256,14 @@ html[data-theme="light"] .currency-picker select option{background:#fff;color:#0
 .input-wrap i{color:var(--txt-2);font-size:13px;margin-right:8px}
 .input-wrap input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--txt-0);font-family:inherit;font-size:13.5px;padding:11px 0;font-weight:500}
 .input-wrap input::placeholder{color:var(--txt-2);opacity:.8}
+.input-clear{
+  flex:0 0 auto;margin-left:6px;padding:5px;border:0;border-radius:8px;
+  background:transparent;color:var(--txt-2);cursor:pointer;display:grid;place-items:center;
+  transition:var(--transition-theme);
+}
+.input-clear[hidden]{display:none}
+.input-clear i{margin:0;font-size:12px;color:inherit}
+.input-clear:hover,.input-clear:focus-visible{color:var(--accent);background:var(--accent-tint)}
 
 /* Calculadora: filtro dividido en dos, con el total acumulado repetido a la izquierda. */
 .calc-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch;margin-bottom:18px}
