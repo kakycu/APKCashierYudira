@@ -283,7 +283,10 @@
   <div class="modal author-modal" role="dialog" aria-modal="true" aria-labelledby="authorName">
     <button class="modal-close" id="authorClose" title="Cerrar perfil" aria-label="Cerrar perfil"><i class="fas fa-xmark"></i></button>
     <div class="author-head">
-      <img src="images/franklin-ramos-lamadrid.jpg" alt="Retrato de Franklin Ramos Lamadrid" width="640" height="800">
+      <button class="author-photo-btn" id="authorPhotoBtn" title="Ver foto en grande" aria-label="Ver foto del autor en grande">
+        <img src="images/franklin-ramos-lamadrid.jpg" alt="Retrato de Franklin Ramos Lamadrid" width="640" height="800">
+        <i class="fas fa-magnifying-glass-plus"></i>
+      </button>
       <div class="author-id">
         <p class="author-role">Fundador · Ingeniería y Desarrollo</p>
         <h3 id="authorName">Franklin Ramos Lamadrid</h3>
@@ -300,6 +303,19 @@
     <div class="modal-actions author-actions">
       <button class="btn" data-author-link="https://www.facebook.com/kakycu"><i class="fab fa-facebook-f"></i><span>Facebook</span></button>
       <button class="btn btn-primary" id="authorOk"><i class="fas fa-check"></i><span>Cerrar</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- VISOR DE FOTO DEL AUTOR -->
+<div class="modal-overlay" id="photoOverlay">
+  <div class="modal photo-modal" role="dialog" aria-modal="true" aria-labelledby="photoCaption">
+    <button class="modal-close" id="photoClose" title="Cerrar foto" aria-label="Cerrar foto"><i class="fas fa-xmark"></i></button>
+    <img src="images/franklin-ramos-lamadrid-full.jpg" alt="Foto ampliada de Franklin Ramos Lamadrid">
+    <div class="photo-foot">
+      <strong id="photoCaption">Franklin Ramos Lamadrid (Kaky)</strong>
+      <small>Toca fuera de la foto o usa Cerrar para volver</small>
+      <button class="btn btn-primary" id="photoOk"><i class="fas fa-check"></i><span>Cerrar</span></button>
     </div>
   </div>
 </div>

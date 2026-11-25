@@ -832,6 +832,13 @@ function openAuthor(){
 function closeAuthor(){
   $('#authorOverlay').classList.remove('show');
 }
+function openPhoto(){
+  $('#photoOverlay').classList.add('show');
+  beep(850, 40);
+}
+function closePhoto(){
+  $('#photoOverlay').classList.remove('show');
+}
 
 function exitApp(){
   confirmModal(
@@ -913,6 +920,7 @@ function initNativeUI(){
   const App = NativePlugins.App;
   if(App && typeof App.addListener === 'function'){
     App.addListener('backButton', ({ canGoBack } = {}) => {
+      if($('#photoOverlay').classList.contains('show')){ closePhoto(); return; }
       if($('#authorOverlay').classList.contains('show')){ closeAuthor(); return; }
       if(isDrawerOpen()){ closeDrawer(); return; }
       const active = document.querySelector('.tab.active');
@@ -956,6 +964,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#authorClose').addEventListener('click', closeAuthor);
   $('#authorOk').addEventListener('click', closeAuthor);
   $('#authorOverlay').addEventListener('click', e => { if(e.target.id === 'authorOverlay') closeAuthor(); });
+  $('#authorPhotoBtn').addEventListener('click', openPhoto);
+  $('#photoClose').addEventListener('click', closePhoto);
+  $('#photoOk').addEventListener('click', closePhoto);
+  $('#photoOverlay').addEventListener('click', e => { if(e.target.id === 'photoOverlay') closePhoto(); });
   $$('[data-author-link]').forEach(b => b.addEventListener('click', () => {
     const url = b.dataset.authorLink;
     if(isNative) window.open(url, '_system');
@@ -1075,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#winClose').addEventListener('click', exitApp);
 
   document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && $('#photoOverlay').classList.contains('show')){ e.preventDefault(); closePhoto(); return; }
     if(e.key === 'Escape' && $('#authorOverlay').classList.contains('show')){ e.preventDefault(); closeAuthor(); return; }
     if(e.key === 'Escape' && isDrawerOpen()){ e.preventDefault(); closeDrawer(); return; }
     if(e.ctrlKey && e.key === 's'){ e.preventDefault(); saveToHistory(); }
