@@ -699,9 +699,21 @@ function syncCurrencyLabels(symbol, code){
   ['#currencyCodeLabel', '#currencyCodeLabelTop'].forEach(id => { const el = $(id); if(el) el.textContent = code; });
 }
 
+function syncCurrencySelect(){
+  const select = $('#currencySelect');
+  if(!select) return;
+  const option = Array.from(select.options).find(o => o.dataset.currency === state.currency.code);
+  select.value = option ? option.value : 'CUSTOM';
+  if(!option){
+    const input = $('#customCurrencyCode');
+    if(input) input.value = state.currency.code;
+  }
+}
+
 function setCurrency(code, symbol, locale){
   state.currency = { code, symbol, locale };
   syncCurrencyLabels(symbol, code);
+  syncCurrencySelect();
   saveState();
   renderBills($('#searchDenom').value);
   renderDenomList();
@@ -710,13 +722,13 @@ function setCurrency(code, symbol, locale){
   renderHistory($('#searchHistory').value);
 }
 
-function applyCurrencyChip(chip){
-  const code = chip.dataset.currency;
-  const sym = chip.dataset.symbol;
-  const loc = chip.dataset.locale;
-  $$('#currencyChips .chip').forEach(c => c.classList.toggle('active', c === chip));
-  setCurrency(code, sym, loc);
-  toast(`Moneda cambiada a ${code}`, 'info');
+function applyCurrencyOption(option){
+  if(!option || option.value === 'CUSTOM'){
+    $('#customCurrencyCode').focus();
+    return;
+  }
+  setCurrency(option.dataset.currency, option.dataset.symbol, option.dataset.locale);
+  toast(`Moneda cambiada a ${option.dataset.currency}`, 'info');
   beep(700, 50);
 }
 
@@ -1015,13 +1027,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const savedCur = state.currency;
   syncCurrencyLabels(savedCur.symbol, savedCur.code);
-  const matchingChip = Array.from($$('#currencyChips .chip')).find(c => c.dataset.currency === savedCur.code);
-  if(matchingChip){
-    $$('#currencyChips .chip').forEach(c => c.classList.toggle('active', c === matchingChip));
-  }else{
-    $$('#currencyChips .chip').forEach(c => c.classList.remove('active'));
-    $('#customCurrencyCode').value = savedCur.code;
-  }
+  syncCurrencySelect();
 
   renderBills();
   renderHistory();
@@ -1031,14 +1037,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $$('.tab').forEach(t => t.addEventListener('click', () => { activateTab(t.dataset.tab); beep(650, 30); }));
 
-  $$('#currencyChips .chip').forEach(chip => {
-    chip.addEventListener('click', () => applyCurrencyChip(chip));
+  $('#currencySelect').addEventListener('change', e => {
+    applyCurrencyOption(e.target.selectedOptions[0]);
   });
 
   $('#applyCustomCurrency').addEventListener('click', () => {
     const code = ($('#customCurrencyCode').value || '').trim().toUpperCase().slice(0,4);
     if(!code || code.length < 2){ toast('Ingresa un código de moneda válido (mín. 2 letras)','error'); return; }
-    $$('#currencyChips .chip').forEach(c => c.classList.remove('active'));
+    const preset = Array.from($('#currencySelect').options).find(o => o.dataset.currency === code);
+    if(preset){ applyCurrencyOption(preset); return; }
     setCurrency(code, '$', 'es-MX');
     toast(`Moneda personalizada: ${code}`, 'success');
     beep(800, 60);

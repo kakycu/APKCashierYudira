@@ -67,20 +67,17 @@
   <!-- TAB: CALCULADORA -->
   <section class="content active" id="tab-calc" role="tabpanel">
     <div class="currency-bar">
-      <div class="currency-label"><i class="fas fa-coins"></i> Moneda</div>
-      <div class="currency-chips" id="currencyChips">
-        <button class="chip active" data-currency="CUP" data-symbol="$" data-locale="es-CU">
-          <i class="fas fa-money-bill-wave"></i> CUP
-        </button>
-        <button class="chip" data-currency="USD" data-symbol="$" data-locale="en-US">
-          <i class="fas fa-dollar-sign"></i> USD
-        </button>
-        <button class="chip" data-currency="EUR" data-symbol="€" data-locale="de-DE">
-          <i class="fas fa-euro-sign"></i> EUR
-        </button>
-        <button class="chip" data-currency="MXN" data-symbol="$" data-locale="es-MX">
-          <i class="fas fa-peso-sign"></i> MXN
-        </button>
+      <label class="currency-label" for="currencySelect"><i class="fas fa-coins"></i> Moneda</label>
+      <div class="currency-picker">
+        <i class="fas fa-money-bill-wave currency-picker-icon" aria-hidden="true"></i>
+        <select id="currencySelect" aria-label="Seleccionar moneda">
+          <option value="CUP" data-currency="CUP" data-symbol="$" data-locale="es-CU">CUP · Peso cubano</option>
+          <option value="USD" data-currency="USD" data-symbol="$" data-locale="en-US">USD · Dólar</option>
+          <option value="EUR" data-currency="EUR" data-symbol="€" data-locale="de-DE">EUR · Euro</option>
+          <option value="MXN" data-currency="MXN" data-symbol="$" data-locale="es-MX">MXN · Peso mexicano</option>
+          <option value="CUSTOM" data-symbol="$" data-locale="es-MX">Personalizada…</option>
+        </select>
+        <i class="fas fa-chevron-down currency-picker-chevron" aria-hidden="true"></i>
       </div>
       <div class="currency-custom">
         <input type="text" id="customCurrencyCode" maxlength="4" placeholder="XXX" aria-label="Código de moneda personalizada">
