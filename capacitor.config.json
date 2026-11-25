@@ -1,0 +1,8 @@
+{
+  "appId": "com.visiones.cashflow",
+  "appName": "ChashierYudira",
+  "webDir": "www",
+  "android": {
+    "androidScheme": "https"
+  }
+}

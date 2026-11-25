@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ChashierYudira</string>
+    <string name="title_activity_main">ChashierYudira</string>
+    <string name="package_name">com.visiones.cashflow</string>
+    <string name="custom_url_scheme">com.visiones.cashflow</string>
+</resources>

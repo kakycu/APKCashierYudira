@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c10">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Visiones - CashFlow v2.0</title>
+
+<!-- ✅ Font Awesome LOCAL (iconos; sin peticiones de red) -->
+<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app" role="application">
+  <!-- TITLEBAR -->
+  <div class="titlebar">
+    <div class="app-logo">
+      <img src="visioneslogo.png" alt="Visiones Logo" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+      <div class="fallback"><i class="fas fa-eye"></i></div>
+    </div>
+    <div class="app-title">
+      <div class="t1">Visiones - CashFlow v2.0</div>
+      <small>Calculadora de billetes · multidenominación</small>
+    </div>
+    <div class="titlebar-spacer"></div>
+    <div class="titlebar-actions">
+      <!-- THEME TOGGLE SLIDER -->
+      <button class="theme-switch" id="themeToggle" role="switch" aria-checked="false" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">
+        <i class="fas fa-moon track-icon moon"></i>
+        <i class="fas fa-sun track-icon sun"></i>
+        <span class="thumb"><i class="fas fa-moon" id="thumbIcon"></i></span>
+      </button>
+      <div class="win-btns">
+        <button class="win-btn" id="winMin" title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>
+        <button class="win-btn" id="winMax" title="Maximizar" aria-label="Maximizar"><i class="fas fa-square"></i></button>
+        <button class="win-btn close" id="winClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab active" data-tab="calc" role="tab" aria-selected="true"><i class="fas fa-calculator"></i> Calculadora</button>
+    <button class="tab" data-tab="history" role="tab" aria-selected="false"><i class="fas fa-clock-rotate-left"></i> Historial <span class="badge" id="histBadge">0</span></button>
+    <button class="tab" data-tab="denoms" role="tab" aria-selected="false"><i class="fas fa-list-check"></i> Denominaciones</button>
+    <button class="tab" data-tab="stats" role="tab" aria-selected="false"><i class="fas fa-chart-simple"></i> Estadísticas</button>
+  </div>
+
+  <!-- TAB: CALCULADORA -->
+  <section class="content active" id="tab-calc" role="tabpanel">
+    <div class="currency-bar">
+      <div class="currency-label"><i class="fas fa-coins"></i> Moneda</div>
+      <div class="currency-chips" id="currencyChips">
+        <button class="chip active" data-currency="CUP" data-symbol="$" data-locale="es-CU">
+          <i class="fas fa-money-bill-wave"></i> CUP
+        </button>
+        <button class="chip" data-currency="USD" data-symbol="$" data-locale="en-US">
+          <i class="fas fa-dollar-sign"></i> USD
+        </button>
+        <button class="chip" data-currency="EUR" data-symbol="€" data-locale="de-DE">
+          <i class="fas fa-euro-sign"></i> EUR
+        </button>
+        <button class="chip" data-currency="MXN" data-symbol="$" data-locale="es-MX">
+          <i class="fas fa-peso-sign"></i> MXN
+        </button>
+      </div>
+      <div class="currency-custom">
+        <input type="text" id="customCurrencyCode" maxlength="4" placeholder="XXX" aria-label="Código de moneda personalizada">
+        <button class="btn btn-sm btn-ghost" id="applyCustomCurrency" title="Aplicar moneda personalizada" aria-label="Aplicar moneda personalizada">
+          <i class="fas fa-check"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="input-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" id="searchDenom" placeholder="Filtrar denominaciones activas...">
+      </div>
+      <button class="btn" id="btnClearAll" title="Vaciar cantidades"><i class="fas fa-eraser"></i><span>Vaciar</span></button>
+      <button class="btn btn-primary" id="btnSaveHistory" title="Guardar en historial"><i class="fas fa-floppy-disk"></i><span>Guardar</span></button>
+    </div>
+
+    <div class="bills-grid" id="billsGrid"></div>
+
+    <div class="total-panel">
+      <div class="total-label">
+        <div class="icon"><i class="fas fa-coins"></i></div>
+        <div>Total acumulado <span id="billCountLabel">0 billetes contados</span></div>
+      </div>
+      <div class="total-amount" id="totalAmount">
+        <span class="cur" id="currencySymbol">$</span><span id="totalValue">0.00</span>
+        <span class="code" id="currencyCodeLabel">CUP</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: HISTORIAL -->
+  <section class="content" id="tab-history" role="tabpanel">
+    <div class="toolbar">
+      <div class="input-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" id="searchHistory" placeholder="Buscar en historial...">
+      </div>
+      <button class="btn btn-danger" id="btnClearHistory" title="Borrar historial"><i class="fas fa-trash-can"></i><span>Borrar todo</span></button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </section>
+
+  <!-- TAB: DENOMINACIONES -->
+  <section class="content" id="tab-denoms" role="tabpanel">
+    <div class="settings-section">
+      <div class="settings-title"><i class="fas fa-sliders"></i> Denominaciones activas</div>
+      <div class="denom-list" id="denomList"></div>
+      <form class="add-denom-form" id="addDenomForm">
+        <input type="number" id="newDenomInput" placeholder="Nueva denominación (ej. 2000)" min="1" step="1" required>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i><span>Agregar</span></button>
+      </form>
+    </div>
+    <div class="settings-section">
+      <div class="settings-title"><i class="fas fa-gear"></i> Preferencias</div>
+      <div class="denom-row">
+        <div class="denom-info">
+          <strong>Confeti al guardar</strong>
+          <small>Animación de celebración al guardar en historial</small>
+        </div>
+        <label class="switch"><input type="checkbox" id="prefConfetti" checked><span class="slider"></span></label>
+      </div>
+      <div class="denom-row">
+        <div class="denom-info">
+          <strong>Auto-guardado</strong>
+          <small>Guardar historial automáticamente al vaciar</small>
+        </div>
+        <label class="switch"><input type="checkbox" id="prefAutoSave"><span class="slider"></span></label>
+      </div>
+      <div class="denom-row">
+        <div class="denom-info">
+          <strong>Sonidos (UI)</strong>
+          <small>Feedback sonoro en acciones</small>
+        </div>
+        <label class="switch"><input type="checkbox" id="prefSound"><span class="slider"></span></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: STATS -->
+  <section class="content" id="tab-stats" role="tabpanel">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label"><i class="fas fa-sack-dollar"></i> Total actual</div>
+        <div class="value green" id="statCurrent">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><i class="fas fa-layer-group"></i> Billetes ahora</div>
+        <div class="value" id="statBills">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><i class="fas fa-clock"></i> Registros</div>
+        <div class="value purple" id="statHistory">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><i class="fas fa-chart-line"></i> Promedio historial</div>
+        <div class="value amber" id="statAvg">$0.00</div>
+      </div>
+    </div>
+    <div class="settings-title" style="margin-top:8px"><i class="fas fa-chart-column"></i> Desglose por denominación</div>
+    <div class="history-list" id="statsBreakdown"></div>
+  </section>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL CONFIRM -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3><i class="fas fa-triangle-exclamation" style="color:var(--amber)"></i> <span id="modalTitle">Confirmar</span></h3>
+    <p id="modalMsg">¿Estás seguro?</p>
+    <div class="modal-actions">
+      <button class="btn" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="modalConfirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTA (reemplaza prompt() en móvil) -->
+<div class="modal-overlay" id="noteOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+    <h3 id="noteTitle"><i class="fas fa-note-sticky" style="color:var(--accent)"></i> Nota del registro</h3>
+    <p>Opcional, máximo 60 caracteres.</p>
+    <input type="text" id="noteInput" maxlength="60" placeholder="Ej. Turno de mañana" aria-label="Nota del registro">
+    <div class="modal-actions">
+      <button class="btn" id="noteCancel">Sin nota</button>
+      <button class="btn btn-primary" id="noteOk">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

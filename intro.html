@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>UnicornioSoftware</title>
+  <style>
+    :root {
+      --bg-1: #071018; --bg-2: #0b1a2b; --cian: #00d4ff; --fuego: #ff6a00; --text: #eaf2fa; --muted: #b8c7d9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(circle at 30% 20%, #13263d 0%, var(--bg-2) 45%, var(--bg-1) 100%); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { position: relative; }
+
+    .intro {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 50% 40%, rgba(0,212,255,.08), transparent 45%),
+                  radial-gradient(circle at 50% 60%, rgba(255,106,0,.08), transparent 50%),
+                  linear-gradient(180deg, #0b1a2b 0%, #060d17 100%);
+      transition: opacity .7s ease, visibility .7s ease;
+      z-index: 10;
+    }
+    .intro.is-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .intro-stage { position: relative; width: min(86vw, 520px); aspect-ratio: 1; }
+    .intro-halo {
+      position: absolute; inset: 10%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,212,255,.18), rgba(0,212,255,0) 65%);
+      filter: blur(2px); opacity: .8;
+    }
+    .intro-layer, .intro-final {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(.88) translateY(12px);
+      transition: opacity .6s ease, transform .7s cubic-bezier(.2,.8,.2,1);
+      will-change: opacity, transform;
+    }
+    .intro-layer img, .intro-final img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 12px 30px rgba(0,0,0,.35)); }
+    .intro-layer.is-on, .intro-final.is-on { opacity: 1; transform: scale(1) translateY(0); }
+    .intro-final { z-index: 6; }
+    .intro-final.is-on img { animation: introPulse 2.6s ease-in-out infinite; }
+    @keyframes introPulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.015); } }
+
+    .intro-sheen {
+      position: absolute; inset: 0; opacity: 0; pointer-events: none;
+      background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.65) 48%, transparent 66%);
+      background-size: 220% 100%; background-position: 135% 0;
+      mix-blend-mode: screen;
+      -webkit-mask-size: contain; mask-size: contain;
+      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+      -webkit-mask-position: center; mask-position: center;
+    }
+    .intro.is-sheen .intro-sheen { opacity: 1; animation: introSheen 1.4s cubic-bezier(.4,0,.5,1) 2; }
+    @keyframes introSheen { 0%{background-position:135% 0} 100%{background-position:-45% 0} }
+
+    .intro-bar {
+      position: absolute; left: 50%; bottom: max(2.25rem, 5vh);
+      width: min(76vw, 480px); height: 3px; transform: translateX(-50%);
+      background: rgba(255,255,255,.14); border-radius: 2px; overflow: hidden;
+    }
+    .intro-bar span { display:block; width:0; height:100%; background: linear-gradient(90deg, var(--cian), var(--fuego)); transition: width .35s ease; }
+
+    /* No connection modal */
+    .modal-overlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      padding: 24px; background: rgba(5,11,20,.62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      z-index: 100; opacity: 0; transition: opacity .35s ease;
+    }
+    .modal-overlay.show { display: flex; opacity: 1; }
+    .modal-card {
+      width: min(100%, 430px); background: linear-gradient(180deg, #16263a, #0f1c2e);
+      border: 1px solid #2a4a6a; border-radius: 24px; padding: 28px 24px;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      transform: translateY(12px) scale(.98); transition: transform .35s ease;
+    }
+    .modal-overlay.show .modal-card { transform: translateY(0) scale(1); }
+    .modal-icon {
+      width: 88px; height: 88px; margin: 0 auto; border-radius: 50%;
+      background: #1e3550; border: 1px solid #355c7d; padding: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-icon img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .modal-title { margin-top: 18px; font-size: 1.45rem; font-weight: 800; letter-spacing: .02em; }
+    .modal-text { margin-top: 10px; color: var(--muted); font-size: .96rem; line-height: 1.55; }
+    .modal-brand { margin-top: 14px; color: var(--cian); font-size: .82rem; font-weight: 600; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+    .btn {
+      flex: 1; height: 48px; border: 0; border-radius: 14px; font-size: .95rem; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn svg { width: 18px; height: 18px; fill: currentColor; flex: 0 0 auto; }
+    .btn-close { background: #334a63; color: #eaf2fa; }
+    .btn-retry { background: linear-gradient(90deg, #00a8cc, #007ea7); color: #fff; }
+    .btn[disabled] { opacity: .75; cursor: wait; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .btn:active { transform: scale(.985); }
+    .hidden { display: none !important; }
+
+    @media (max-width: 520px) {
+      .intro-acciones { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
+      .intro-bar { bottom: max(1.25rem, 3vh); width: min(82vw, 360px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .intro-layer, .intro-final, .intro, .modal-overlay, .modal-card, .intro-bar span { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="intro" id="introAnim">
+    <div class="intro-stage">
+      <div class="intro-halo"></div>
+      <div class="intro-layer" data-paso="1"><img src="anim/01_Circulo.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="2"><img src="anim/02_Unicornio.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="3"><img src="anim/03_Trabajadores.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="4"><img src="anim/04_Elementos_Nomina.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="5"><img src="anim/05_Logo_SiGesNom.png" alt="" decoding="async"></div>
+      <div class="intro-final">
+        <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+          <img src="anim/final.png" alt="UnicornioSoftware" decoding="async">
+          <span class="intro-sheen" aria-hidden="true" style="-webkit-mask-image:url('anim/final.png');mask-image:url('anim/final.png');"></span>
+        </div>
+      </div>
+    </div>
+    <div class="intro-bar"><span id="introBar"></span></div>
+  </div>
+
+  <div class="modal-overlay" id="offlineModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="offlineTitle">
+      <div class="modal-icon"><img src="logo.png" alt="Logo UnicornioSoftware"></div>
+      <div class="modal-title" id="offlineTitle"><span style="display:inline-flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="22" height="22" fill="#00d4ff" aria-hidden="true"><path d="M23.64 7c-.45-.34-4.93-4-11.64-4-1.5 0-2.89.19-4.15.48L18.18 13.8 23.64 7zM17.04 15.22L3.27 1.44 2 2.72l2.05 2.06C1.91 5.76.59 6.82.36 7l11.63 14.49.01.01.01-.01 3.9-4.86 3.32 3.32 1.27-1.27-3.46-3.46z"/></svg>Sin conexión a internet</span></div>
+      <div class="modal-text" id="offlineText">Esta aplicación necesita conexión a internet para funcionar.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.</div>
+      <div class="modal-brand">UnicornioSoftware</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-close" id="offlineClose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Cerrar</button>
+        <button type="button" class="btn btn-retry" id="offlineRetry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg><span>Reintentar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="retryModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="retryTitle">
+      <div class="retry-spinner" aria-hidden="true"></div>
+      <div class="modal-title" id="retryTitle"><span style="display:inline-flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="22" height="22" fill="#00d4ff" class="spin" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>Reintentando conexión</span></div>
+      <div class="modal-text">Comprobando tu conexión a internet...</div>
+      <div class="modal-brand">UnicornioSoftware</div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var intro = document.getElementById('introAnim');
+    var barra = document.getElementById('introBar');
+    var saltar = null;
+    var noMostrar = null;
+    var replay = null;
+    var capas = intro.querySelectorAll('.intro-layer');
+    var capaFinal = intro.querySelector('.intro-final');
+    var modal = document.getElementById('offlineModal');
+    var btnRetry = document.getElementById('offlineRetry');
+    var btnClose = document.getElementById('offlineClose');
+    var pasos = capas.length + 1;
+    var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var terminado = false;
+    var temporizadores = [];
+    var ocultarIntro = false;
+    try { ocultarIntro = localStorage.getItem('introOculta') === '1'; } catch (e) {}
+
+    function esperar(fn, ms) { var t = setTimeout(fn, ms); temporizadores.push(t); return t; }
+    function pintar(paso) { if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; } }
+    function limpiarTimers() { for (var i = 0; i < temporizadores.length; i++) clearTimeout(temporizadores[i]); temporizadores = []; }
+
+    function isOnline() { return navigator.onLine !== false; }
+    function mostrarModal() { modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); }
+    function ocultarModal() { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+
+    function finalizarIntro() {
+      if (terminado) return;
+      terminado = true;
+      limpiarTimers();
+      if (barra) barra.style.width = '100%';
+      intro.classList.add('is-out');
+      esperar(function () {
+        // La portada está empaquetada localmente; navegar aunque no haya conexión.
+        window.location.href = './index.html?from_intro=1';
+      }, 650);
+    }
+
+    function mostrarFinal() {
+      if (terminado) return;
+      pintar(pasos);
+      intro.classList.add('is-final');
+      if (capaFinal) capaFinal.classList.add('is-on');
+      esperar(function () { if (!terminado) intro.classList.add('is-sheen'); }, 1050);
+      esperar(finalizarIntro, 4100);
+    }
+
+    function mostrarCapa(indice) {
+      if (terminado) return;
+      if (indice >= capas.length) { esperar(mostrarFinal, 1000); return; }
+      capas[indice].classList.add('is-on');
+      pintar(indice + 1);
+      esperar(function () { mostrarCapa(indice + 1); }, 820);
+    }
+
+    /* reinicio manual deshabilitado en APK */
+
+    function iniciar() {
+      if (reducido) { finalizarIntro(); return; }
+      esperar(finalizarIntro, 14000); // safety net
+      esperar(function () { mostrarCapa(0); }, 220);
+    }
+
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !terminado) finalizarIntro(); });
+
+    var retryModal = document.getElementById('retryModal');
+    function mostrarRetryModal() { retryModal.classList.add('show'); retryModal.setAttribute('aria-hidden', 'false'); }
+    function ocultarRetryModal() { retryModal.classList.remove('show'); retryModal.setAttribute('aria-hidden', 'true'); }
+
+    btnRetry.addEventListener('click', function () {
+      if (btnRetry.disabled) return;
+      btnRetry.disabled = true;
+      ocultarModal();
+      mostrarRetryModal();
+      setTimeout(function () {
+        ocultarRetryModal();
+        btnRetry.disabled = false;
+        if (isOnline()) {
+          window.location.href = './index.html?from_intro=1';
+        } else {
+          document.getElementById('offlineText').innerHTML = 'No se pudo restablecer la conexión.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.';
+          mostrarModal();
+        }
+      }, 1400);
+    });
+    btnClose.addEventListener('click', function () {
+      if (window.AndroidApp && window.AndroidApp.closeApp) window.AndroidApp.closeApp();
+      else window.close();
+    });
+
+    if (ocultarIntro) {
+      intro.classList.add('is-out');
+      terminado = true;
+      // La portada está empaquetada localmente; navegar aunque no haya conexión.
+      window.location.replace('./index.html?from_intro=1');
+      return;
+    }
+
+    iniciar();
+  })();
+  </script>
+</body>
+</html>
