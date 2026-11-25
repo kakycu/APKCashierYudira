@@ -90,13 +90,25 @@
       </div>
     </div>
 
-    <div class="toolbar">
-      <div class="input-wrap">
-        <i class="fas fa-magnifying-glass"></i>
-        <input type="text" id="searchDenom" placeholder="Filtrar denominaciones activas...">
+    <div class="calc-toolbar">
+      <div class="total-panel total-panel-top" aria-label="Total acumulado">
+        <div class="total-label">
+          <div class="icon"><i class="fas fa-coins"></i></div>
+          <div>Total acumulado <span id="billCountLabelTop">0 billetes contados</span></div>
+        </div>
+        <div class="total-amount" id="totalAmountTop">
+          <span class="cur" id="currencySymbolTop">$</span><span id="totalValueTop">0.00</span>
+          <span class="code" id="currencyCodeLabelTop">CUP</span>
+        </div>
       </div>
-      <button class="btn" id="btnClearAll" title="Vaciar cantidades"><i class="fas fa-eraser"></i><span>Vaciar</span></button>
-      <button class="btn btn-primary" id="btnSaveHistory" title="Guardar en historial"><i class="fas fa-floppy-disk"></i><span>Guardar</span></button>
+      <div class="calc-tools">
+        <div class="input-wrap">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="text" id="searchDenom" placeholder="Filtrar denominaciones activas...">
+        </div>
+        <button class="btn" id="btnClearAll" title="Vaciar cantidades"><i class="fas fa-eraser"></i><span>Vaciar</span></button>
+        <button class="btn btn-primary" id="btnSaveHistory" title="Guardar en historial"><i class="fas fa-floppy-disk"></i><span>Guardar</span></button>
+      </div>
     </div>
 
     <div class="bills-grid" id="billsGrid"></div>

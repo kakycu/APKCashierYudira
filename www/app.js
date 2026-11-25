@@ -387,13 +387,19 @@ function updateSubtotalFor(d){
    ============================================================ */
 function refreshTotals(){
   const { total, bills } = calcTotals();
-  const totalEl = $('#totalValue');
-  const amountEl = $('#totalAmount');
-  totalEl.textContent = fmtMoney(total);
-  $('#billCountLabel').textContent = `${bills} billete${bills === 1 ? '' : 's'} contado${bills === 1 ? '' : 's'}`;
-  amountEl.classList.remove('bump');
-  void amountEl.offsetWidth;
-  amountEl.classList.add('bump');
+  const formatted = fmtMoney(total);
+  const countText = `${bills} billete${bills === 1 ? '' : 's'} contado${bills === 1 ? '' : 's'}`;
+
+  /* El total aparece dos veces: arriba de la calculadora y en el panel final. */
+  ['#totalValue', '#totalValueTop'].forEach(id => { const el = $(id); if(el) el.textContent = formatted; });
+  ['#billCountLabel', '#billCountLabelTop'].forEach(id => { const el = $(id); if(el) el.textContent = countText; });
+  ['#totalAmount', '#totalAmountTop'].forEach(id => {
+    const el = $(id);
+    if(!el) return;
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  });
 
   $('#statCurrent').textContent = state.currency.symbol + fmtMoney(total);
   $('#statBills').textContent = bills;
@@ -688,10 +694,14 @@ function saveToHistoryQuiet(){
 /* ============================================================
    MONEDA
    ============================================================ */
+function syncCurrencyLabels(symbol, code){
+  ['#currencySymbol', '#currencySymbolTop'].forEach(id => { const el = $(id); if(el) el.textContent = symbol; });
+  ['#currencyCodeLabel', '#currencyCodeLabelTop'].forEach(id => { const el = $(id); if(el) el.textContent = code; });
+}
+
 function setCurrency(code, symbol, locale){
   state.currency = { code, symbol, locale };
-  $('#currencySymbol').textContent = symbol;
-  $('#currencyCodeLabel').textContent = code;
+  syncCurrencyLabels(symbol, code);
   saveState();
   renderBills($('#searchDenom').value);
   renderDenomList();
@@ -951,8 +961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadState();
 
   const savedCur = state.currency;
-  $('#currencySymbol').textContent = savedCur.symbol;
-  $('#currencyCodeLabel').textContent = savedCur.code;
+  syncCurrencyLabels(savedCur.symbol, savedCur.code);
   const matchingChip = Array.from($$('#currencyChips .chip')).find(c => c.dataset.currency === savedCur.code);
   if(matchingChip){
     $$('#currencyChips .chip').forEach(c => c.classList.toggle('active', c === matchingChip));

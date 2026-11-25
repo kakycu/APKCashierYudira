@@ -4,7 +4,7 @@ Calculadora de billetes multidenominación, 100 % local: no envía datos ni depe
 
 Repositorio: https://github.com/kakycu/APKCashierYudira
 
-El APK generado se llama **`ChashierYudira.apk`**. Las tarjetas del historial muestran el desglose de billetes (por ejemplo `7×10,000`, `1×500`). En **Denominaciones** puedes activar/desactivar cada una y borrar las que hayas agregado; las originales (`3, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000`) nunca muestran botón de borrar y no se pueden eliminar.
+El APK generado se llama **`ChashierYudira.apk`**. Las tarjetas del historial muestran el desglose de billetes (por ejemplo `7×10,000`, `1×500`). En **Calculadora**, el espacio de **Filtrar denominaciones** está dividido en dos: a la izquierda se repite el card del **Total acumulado** (con el mismo estilo y valores sincronizados con el panel final) y a la derecha quedan el buscador y los botones **Vaciar** y **Guardar**. En **Denominaciones** puedes activar/desactivar cada una y borrar las que hayas agregado; las originales (`3, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000`) nunca muestran botón de borrar y no se pueden eliminar.
 
 ## Pantalla de entrada
 
