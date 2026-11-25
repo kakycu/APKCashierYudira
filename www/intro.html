@@ -56,7 +56,7 @@
   .unicornio img{width:54%;height:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.4))}
   .unicornio.is-on img{animation:flotar 2.8s ease-in-out 1.8s infinite alternate}
   /* Tras caer Yudira, el unicornio sube y se coloca encima del círculo. */
-  .unicornio.sube{animation:subirUnicornio .9s cubic-bezier(.2,.8,.2,1) both}
+  .unicornio.sube{z-index:4;animation:subirUnicornio .9s cubic-bezier(.2,.8,.2,1) both}
   .unicornio.sube img{filter:drop-shadow(0 10px 22px rgba(0,212,255,.45))}
 
   /* Yudira entra grande desde arriba y se asienta pequeña en el centro del círculo. */
@@ -86,7 +86,7 @@
   @keyframes flotar{from{transform:translateY(6px) scale(1)}to{transform:translateY(-10px) scale(1.03)}}
   @keyframes subirUnicornio{
     from{transform:scale(1) translateY(8%)}
-    to{transform:scale(.92) translateY(-32%)}
+    to{transform:scale(.92) translateY(-56%)}
   }
   @keyframes caerYudira{
     0%{opacity:0;transform:translateY(-78vh) scale(1.55)}
@@ -145,7 +145,7 @@
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation:none!important;transition:none!important}
     .foto-movil{opacity:1;transform:none}
-    .unicornio.sube{transform:scale(.92) translateY(-32%)}
+    .unicornio.sube{transform:scale(.92) translateY(-56%)}
     .marca,.subtitulo,.entrar,.pie{opacity:1;transform:none}
   }
 </style>
