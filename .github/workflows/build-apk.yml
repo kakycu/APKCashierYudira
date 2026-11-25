@@ -32,7 +32,8 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           [ -x "$SDKMANAGER" ] || SDKMANAGER="$(which sdkmanager)"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platforms;android-37" "build-tools;36.0.0"
+          "$SDKMANAGER" --list_installed | grep 'platforms;android-' || true
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "build-tools;36.0.0" || true
 
       - name: Instalar dependencias
         run: npm ci
@@ -44,7 +45,11 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMANAGER" ] || SDKMANAGER="$(which sdkmanager)"
+          PLATFORM=$("$SDKMANAGER" --list_installed | grep -o 'platforms;android-[0-9]*' | sed 's/.*-//' | sort -n | tail -1)
+          echo "compileSdk detectada: $PLATFORM"
+          ./gradlew assembleDebug -PciCompileSdk=$PLATFORM --no-daemon
 
       - name: Preparar ChashierYudira.apk
         run: cp android/app/build/outputs/apk/debug/ChashierYudira.apk ChashierYudira.apk
