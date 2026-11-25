@@ -1,6 +1,14 @@
-# Visiones - CashFlow
+# ChashierYudira (antes Visiones - CashFlow)
 
 Calculadora de billetes multidenominación, 100 % local (sin peticiones de red).
+
+Repositorio: https://github.com/kakycu/APKCashierYudira
+
+El APK generado se llama **`ChashierYudira.apk`**. Las tarjetas del historial muestran el desglose de billetes (por ejemplo `7×10,000`, `1×500`).
+
+## Compilar desde GitHub
+
+El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `push` a `main`. También puedes lanzarlo manualmente: pestaña **Actions** → *Compilar APK ChashierYudira* → **Run workflow**. El APK queda como artefacto descargable (`ChashierYudira`).
 
 ## Estructura
 
