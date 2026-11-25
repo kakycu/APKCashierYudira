@@ -840,6 +840,21 @@ function closePhoto(){
   $('#photoOverlay').classList.remove('show');
 }
 
+/* Los botones flotantes buscan el contenedor que realmente hace scroll:
+   el documento en web/APK y el propio .app en pantallas apaisadas. */
+function scrollTarget(){
+  const app = document.querySelector('.app');
+  if(app && /auto|scroll/.test(getComputedStyle(app).overflowY) && app.scrollHeight > app.clientHeight + 1) return app;
+  return document.scrollingElement || document.documentElement || document.body;
+}
+function scrollPage(toTop){
+  const el = scrollTarget();
+  const top = toTop ? 0 : el.scrollHeight;
+  if(el.scrollTo) el.scrollTo({ top, behavior: 'auto' });
+  else el.scrollTop = top;
+  if(state.prefs.sound) beep(toTop ? 900 : 650, 35);
+}
+
 function exitApp(){
   confirmModal(
     'Cerrar aplicación',
@@ -960,6 +975,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateDrawerState();
   });
   $('#sidePrefs').addEventListener('click', () => { activateTab('denoms'); closeDrawer(); });
+  $('#sideReplayIntro').addEventListener('click', () => {
+    closeDrawer();
+    saveState();
+    try { sessionStorage.removeItem('cashier_entered'); } catch(e){}
+    if(state.prefs.sound) beep(750, 50);
+    window.location.href = 'intro.html';
+  });
   $('#sideAuthor').addEventListener('click', openAuthor);
   $('#authorClose').addEventListener('click', closeAuthor);
   $('#authorOk').addEventListener('click', closeAuthor);
@@ -1085,6 +1107,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     app.style.maxWidth = app.style.maxWidth === '100%' ? '1180px' : '100%';
   });
   $('#winClose').addEventListener('click', exitApp);
+
+  $('#btnScrollTop').addEventListener('click', () => scrollPage(true));
+  $('#btnScrollBottom').addEventListener('click', () => scrollPage(false));
 
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape' && $('#photoOverlay').classList.contains('show')){ e.preventDefault(); closePhoto(); return; }
