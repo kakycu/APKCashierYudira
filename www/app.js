@@ -468,17 +468,19 @@ function renderDenomList(){
   list.innerHTML = all.map(d => {
     const active = state.denoms.includes(d);
     const color = colorForDenom(d);
+    const personalizada = !DEFAULT_DENOMS.includes(d);
     return `
       <div class="denom-row" data-denom-row="${d}">
         <div class="denom-swatch" style="background:${color}"></div>
         <div class="denom-info">
           <strong>${state.currency.symbol}${d.toLocaleString('es-MX')} ${state.currency.code}</strong>
-          <small>${active ? 'Activa en calculadora' : 'Desactivada'}</small>
+          <small>${active ? 'Activa en calculadora' : 'Desactivada'}${personalizada ? ' · Personalizada' : ''}</small>
         </div>
         <label class="switch">
           <input type="checkbox" ${active ? 'checked' : ''} data-toggle="${d}" aria-label="Activar denominación ${d}">
           <span class="slider"></span>
         </label>
+        ${personalizada ? `<button type="button" class="btn btn-danger btn-sm btn-icon" data-deldenom="${d}" title="Borrar denominación ${d}" aria-label="Borrar denominación ${d}"><i class="fas fa-trash-can"></i></button>` : ''}
       </div>
     `;
   }).join('');
@@ -501,6 +503,32 @@ function renderDenomList(){
       refreshTotals();
       renderStats();
       beep(inp.checked ? 800 : 500, 50);
+    });
+  });
+
+  /* Solo se pueden borrar las denominaciones agregadas por el usuario. */
+  list.querySelectorAll('[data-deldenom]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const d = Number(btn.dataset.deldenom);
+      if(DEFAULT_DENOMS.includes(d)){
+        toast('Las denominaciones originales no se pueden borrar', 'error');
+        return;
+      }
+      const ok = await confirmModal(
+        'Borrar denominación',
+        `¿Borrar ${state.currency.symbol}${d.toLocaleString('es-MX')} ${state.currency.code} de la configuración?`
+      );
+      if(!ok) return;
+      state.allDenoms = state.allDenoms.filter(x => x !== d);
+      state.denoms = state.denoms.filter(x => x !== d);
+      delete state.quantities[d];
+      saveState();
+      renderBills($('#searchDenom').value);
+      renderDenomList();
+      refreshTotals();
+      renderStats();
+      toast(`Denominación ${state.currency.symbol}${d.toLocaleString('es-MX')} borrada`, 'success');
+      beep(500, 60);
     });
   });
 }

@@ -262,6 +262,7 @@ html[data-theme="dark"] .btn-danger:hover{background:#2a1518;border-color:#5a2a3
 html[data-theme="light"] .btn-danger{border-color:#fca5a5}
 html[data-theme="light"] .btn-danger:hover{background:#fee2e2;border-color:#f87171}
 .btn-sm{padding:8px 12px;font-size:12px;border-radius:10px}
+.btn-icon{padding:8px 10px;min-width:36px;justify-content:center}
 .btn-ghost{background:transparent;border-color:transparent}
 .btn-ghost:hover{background:var(--bg-3);border-color:var(--stroke)}
 
@@ -353,6 +354,8 @@ html[data-theme="light"] .total-panel::before{opacity:.5}
 .add-denom-form input{flex:1;min-width:120px;background:var(--input-bg-alt);border:1.5px solid var(--input-border);border-radius:10px;padding:10px 12px;color:var(--txt-0);font-family:var(--font-mono);font-weight:600;font-size:14px;outline:none;transition:var(--transition-theme)}
 .add-denom-form input::placeholder{color:var(--txt-2);opacity:.8;font-family:var(--font-sans)}
 .add-denom-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);background:var(--input-bg)}
+.denom-hint{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--txt-2);line-height:1.5}
+.denom-hint i{color:var(--accent)}
 
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .stat-card{background:var(--bg-2);border:1.5px solid var(--stroke);border-radius:var(--radius-md);padding:16px;transition:var(--transition-theme)}
