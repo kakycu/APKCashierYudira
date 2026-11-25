@@ -227,6 +227,7 @@
       <button class="side-link" id="sideTheme"><i class="fas fa-circle-half-stroke"></i><span>Cambiar tema</span></button>
       <button class="side-link" id="sideSound"><i class="fas fa-volume"></i><span>Sonidos</span><span class="side-state" id="sideSoundState">No</span></button>
       <button class="side-link" id="sidePrefs"><i class="fas fa-gear"></i><span>Preferencias</span></button>
+      <button class="side-link" id="sideAuthor"><i class="fas fa-user-tie"></i><span>Autor</span></button>
       <button class="side-link" id="sideUpdate"><i class="fas fa-download"></i><span>Buscar actualizaciones</span><span class="side-state" id="sideVersion">v2.0.1</span></button>
     </div>
   </div>
@@ -273,6 +274,33 @@
     <div class="modal-actions">
       <button class="btn" id="updateClose"><i class="fas fa-clock"></i> Ahora no</button>
       <button class="btn btn-primary" id="updateDownload"><i class="fas fa-download"></i> Descargar APK</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AUTOR (perfil de Franklin Ramos Lamadrid, desde about.php) -->
+<div class="modal-overlay" id="authorOverlay">
+  <div class="modal author-modal" role="dialog" aria-modal="true" aria-labelledby="authorName">
+    <button class="modal-close" id="authorClose" title="Cerrar perfil" aria-label="Cerrar perfil"><i class="fas fa-xmark"></i></button>
+    <div class="author-head">
+      <img src="images/franklin-ramos-lamadrid.jpg" alt="Retrato de Franklin Ramos Lamadrid" width="640" height="800">
+      <div class="author-id">
+        <p class="author-role">Fundador · Ingeniería y Desarrollo</p>
+        <h3 id="authorName">Franklin Ramos Lamadrid</h3>
+        <span class="author-alias">Kaky</span>
+      </div>
+    </div>
+    <div class="author-body">
+      <p>Máster en Ciencias Informáticas con más de una década de experiencia en desarrollo de software, videojuegos, simulación y dirección de proyectos tecnológicos.</p>
+      <p>Desarrollador full-stack con amplia experiencia en el diseño y desarrollo de interfaces de usuario, así como en la implementación de arquitecturas escalables y eficientes para sistemas empresariales. Mi enfoque principal es crear soluciones tecnológicas que no solo sean funcionales, sino también intuitivas y atractivas para los usuarios finales.</p>
+      <p>Entre mis proyectos destacados se encuentra el Sistema de Gestión Empresarial, una plataforma integral diseñada para optimizar la gestión de clientes, inventarios y facturación. Este sistema combina tecnologías modernas como React para el frontend, Node.js para el backend y MongoDB como base de datos, lo que permite una experiencia de usuario fluida y un rendimiento óptimo en entornos empresariales.</p>
+      <p>Su trayectoria se forjó en estudios de desarrollo, la academia y proyectos especializados — Vertical Soft Studios, Virtual Games Creations, Cátedra de Ciencias Informáticas y en la Universidad de Camagüey, dirigiendo equipos y definiendo arquitecturas de productos.</p>
+      <p>Hoy aplica esa experiencia al diseño, desarrollo y evolución de las soluciones de UnicornioSoftware.</p>
+    </div>
+    <div class="modal-actions author-actions">
+      <button class="btn" data-author-link="https://www.facebook.com/kakycu"><i class="fab fa-facebook-f"></i><span>Facebook</span></button>
+      <button class="btn" data-author-link="https://localhost/servicios/explorer.php"><i class="fas fa-briefcase"></i><span>Portafolio</span></button>
+      <button class="btn btn-primary" id="authorOk"><i class="fas fa-check"></i><span>Cerrar</span></button>
     </div>
   </div>
 </div>

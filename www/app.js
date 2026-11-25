@@ -824,6 +824,15 @@ function updateDrawerState(){
   if(version && version.textContent === '…') return;
   if(version) version.textContent = 'v' + APP_VERSION;
 }
+function openAuthor(){
+  closeDrawer();
+  $('#authorOverlay').classList.add('show');
+  beep(700, 35);
+}
+function closeAuthor(){
+  $('#authorOverlay').classList.remove('show');
+}
+
 function exitApp(){
   confirmModal(
     'Cerrar aplicación',
@@ -904,6 +913,7 @@ function initNativeUI(){
   const App = NativePlugins.App;
   if(App && typeof App.addListener === 'function'){
     App.addListener('backButton', ({ canGoBack } = {}) => {
+      if($('#authorOverlay').classList.contains('show')){ closeAuthor(); return; }
       if(isDrawerOpen()){ closeDrawer(); return; }
       const active = document.querySelector('.tab.active');
       if(active && active.dataset.tab !== 'calc'){ activateTab('calc'); return; }
@@ -942,6 +952,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateDrawerState();
   });
   $('#sidePrefs').addEventListener('click', () => { activateTab('denoms'); closeDrawer(); });
+  $('#sideAuthor').addEventListener('click', openAuthor);
+  $('#authorClose').addEventListener('click', closeAuthor);
+  $('#authorOk').addEventListener('click', closeAuthor);
+  $('#authorOverlay').addEventListener('click', e => { if(e.target.id === 'authorOverlay') closeAuthor(); });
+  $$('[data-author-link]').forEach(b => b.addEventListener('click', () => {
+    const url = b.dataset.authorLink;
+    if(isNative) window.open(url, '_system');
+    else window.open(url, '_blank', 'noopener');
+  }));
   $('#sideExit').addEventListener('click', () => { closeDrawer(); exitApp(); });
   $('#sideUpdate').addEventListener('click', checkForUpdates);
   $('#updateClose').addEventListener('click', () => $('#updateOverlay').classList.remove('show'));
@@ -1056,6 +1075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#winClose').addEventListener('click', exitApp);
 
   document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && $('#authorOverlay').classList.contains('show')){ e.preventDefault(); closeAuthor(); return; }
     if(e.key === 'Escape' && isDrawerOpen()){ e.preventDefault(); closeDrawer(); return; }
     if(e.ctrlKey && e.key === 's'){ e.preventDefault(); saveToHistory(); }
     if(e.ctrlKey && e.key === 'k'){ e.preventDefault(); $('#searchDenom').focus(); }
