@@ -6,6 +6,10 @@ Repositorio: https://github.com/kakycu/APKCashierYudira
 
 El APK generado se llama **`ChashierYudira.apk`**. Las tarjetas del historial muestran el desglose de billetes (por ejemplo `7×10,000`, `1×500`).
 
+## Pantalla de entrada
+
+Al abrir la app (también en la APK) se muestra `www/intro.html`: círculo y unicornio animados con la foto de Yudira en el centro, y el botón **ENTRAR AL CASHIER DE YUDIRA**. El botón guarda un flag en `sessionStorage` y abre `index.html`. Todos los botones incluyen icono, incluidos los diálogos.
+
 ## Menú lateral y actualizaciones (v2.0.0)
 
 - Botón de hamburguesa en la barra de título: abre una barra lateral con las cuatro secciones, acciones rápidas (guardar, vaciar, tema, sonidos, preferencias), **Cerrar aplicación** y **Buscar actualizaciones**.
@@ -19,9 +23,10 @@ El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `
 
 ## Estructura
 
-- `index.html` (raíz): simple redirección para abrir la app con doble clic.
+- `index.html` (raíz): redirección a `www/intro.html` para abrir con doble clic.
 - `www/`: **código fuente de la aplicación**.
-  - `index.html`, `styles.css`, `app.js`
+  - `intro.html` (animación de entrada), `index.html` (app), `styles.css`, `app.js`
+  - `anim/` (solo `01_Circulo.png`, `02_Unicornio.png` y `Yudira.png`, usados en la animación)
   - `fonts/` (Inter + JetBrains Mono, `.woff2` con licencias OFL)
   - `vendor/fontawesome/` (iconos locales)
   - `icons/` (iconos 192/512 y maskable generados desde `visioneslogo.png`)

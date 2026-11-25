@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#071018">
+<title>Entrar al Cashier de Yudira</title>
+<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+<style>
+  :root{
+    --cian:#00d4ff;--fuego:#ff6a00;--texto:#eaf2fa;--muted:#b8c7d9;
+    --safe-top:env(safe-area-inset-top, 0px);
+    --safe-bottom:env(safe-area-inset-bottom, 0px);
+    --safe-left:env(safe-area-inset-left, 0px);
+    --safe-right:env(safe-area-inset-right, 0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    color:var(--texto);overflow:hidden;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(0,212,255,.16), transparent 48%),
+      radial-gradient(circle at 50% 75%, rgba(255,106,0,.10), transparent 52%),
+      linear-gradient(180deg,#0b1a2b 0%,#071018 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
+    text-align:center;
+  }
+  .intro{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+  .stage{
+    position:relative;width:min(86vw,420px);aspect-ratio:1;flex-shrink:0;
+    display:grid;place-items:center;
+  }
+  .halo{
+    position:absolute;inset:8%;border-radius:50%;
+    background:radial-gradient(circle,rgba(0,212,255,.22),rgba(0,212,255,0) 68%);
+    filter:blur(6px);animation:halo 3.2s ease-in-out infinite alternate;
+  }
+  .capa{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  .capa img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
+  .circulo img{width:100%;height:100%;opacity:.8;animation:giro 22s linear infinite}
+  .unicornio{align-items:start;padding-top:6%}
+  .unicornio img{width:66%;height:auto;opacity:.95;filter:drop-shadow(0 8px 18px rgba(0,0,0,.4));animation:flotar 3s ease-in-out infinite alternate}
+  .foto{position:relative;z-index:3}
+  .foto img{
+    width:76%;height:88%;border-radius:20px;
+    box-shadow:0 18px 45px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.10) inset;
+    animation:respirar 3.6s ease-in-out infinite;
+  }
+  @keyframes giro{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes flotar{from{transform:translateY(6px) scale(1)}to{transform:translateY(-10px) scale(1.03)}}
+  @keyframes respirar{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+  @keyframes halo{from{opacity:.55;transform:scale(.96)}to{opacity:1;transform:scale(1.06)}}
+
+  .marca{font-size:clamp(20px,5vw,30px);font-weight:800;letter-spacing:.04em;line-height:1.2}
+  .marca span{background:linear-gradient(90deg,var(--cian),var(--fuego));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .subtitulo{margin-top:6px;font-size:12px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+  .entrar{
+    margin-top:4px;min-height:52px;padding:0 26px;border:0;border-radius:15px;
+    background:linear-gradient(90deg,#00a8cc,#007ea7);color:#fff;
+    font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.03em;
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    cursor:pointer;box-shadow:0 10px 28px rgba(0,168,204,.32);
+    transition:transform .18s ease,box-shadow .25s ease,filter .25s ease;
+  }
+  .entrar i{font-size:16px}
+  .entrar:hover{filter:brightness(1.08);box-shadow:0 14px 34px rgba(0,168,204,.45)}
+  .entrar:active{transform:scale(.98)}
+  .entrar:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  .pie{font-size:10.5px;color:var(--muted);opacity:.75;margin-top:2px}
+
+  @media (max-height:680px){
+    .stage{width:min(64vh,340px)}
+    .intro{gap:10px}
+    .entrar{min-height:46px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .halo,.circulo img,.unicornio img,.foto img{animation:none!important}
+  }
+</style>
+</head>
+<body>
+  <main class="intro">
+    <div class="stage" aria-label="Animación de entrada">
+      <div class="halo" aria-hidden="true"></div>
+      <div class="capa circulo" aria-hidden="true"><img src="anim/01_Circulo.png" alt=""></div>
+      <div class="capa unicornio" aria-hidden="true"><img src="anim/02_Unicornio.png" alt=""></div>
+      <div class="capa foto"><img src="anim/Yudira.png" alt="Yudira"></div>
+    </div>
+
+    <div>
+      <h1 class="marca">CASHIER DE <span>YUDIRA</span></h1>
+      <p class="subtitulo">Calculadora de billetes</p>
+    </div>
+
+    <button type="button" class="entrar" id="entrarBtn"><i class="fas fa-arrow-right"></i> ENTRAR AL CASHIER DE YUDIRA</button>
+    <p class="pie">Versión 2.0.0 · 100 % local</p>
+  </main>
+
+  <script>
+    document.getElementById('entrarBtn').addEventListener('click', function () {
+      try { sessionStorage.setItem('cashier_entered', '1'); } catch (e) {}
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>

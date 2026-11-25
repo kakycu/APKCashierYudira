@@ -8,7 +8,17 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Visiones - CashFlow v2.0</title>
+<script>
+  /* La APK abre este archivo: mostramos first la animación de entrada. */
+  (function(){
+    try{
+      if(sessionStorage.getItem('cashier_entered') !== '1'){
+        setTimeout(function(){ location.replace('intro.html'); }, 0);
+      }
+    }catch(e){}
+  })();
+</script>
+<title>Cashier de Yudira v2.0</title>
 
 <!-- ✅ Font Awesome LOCAL (iconos; sin peticiones de red) -->
 <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
@@ -26,7 +36,7 @@
       <div class="fallback"><i class="fas fa-eye"></i></div>
     </div>
     <div class="app-title">
-      <div class="t1">Visiones - CashFlow v2.0</div>
+      <div class="t1">Cashier de Yudira v2.0</div>
       <small>Calculadora de billetes · multidenominación</small>
     </div>
     <div class="titlebar-spacer"></div>
@@ -181,7 +191,7 @@
   <div class="sidebar-head">
     <img src="visioneslogo.png" alt="" onerror="this.style.display='none'">
     <div class="sidebar-brand">
-      <strong>ChashierYudira</strong>
+      <strong>Cashier de Yudira</strong>
       <small>Calculadora de billetes</small>
     </div>
     <button class="sidebar-close" id="drawerClose" title="Cerrar menú" aria-label="Cerrar menú"><i class="fas fa-xmark"></i></button>
@@ -222,8 +232,8 @@
     <h3><i class="fas fa-triangle-exclamation" style="color:var(--amber)"></i> <span id="modalTitle">Confirmar</span></h3>
     <p id="modalMsg">¿Estás seguro?</p>
     <div class="modal-actions">
-      <button class="btn" id="modalCancel">Cancelar</button>
-      <button class="btn btn-primary" id="modalConfirm">Confirmar</button>
+      <button class="btn" id="modalCancel"><i class="fas fa-xmark"></i> Cancelar</button>
+      <button class="btn btn-primary" id="modalConfirm"><i class="fas fa-check"></i> Confirmar</button>
     </div>
   </div>
 </div>
@@ -235,8 +245,8 @@
     <p>Opcional, máximo 60 caracteres.</p>
     <input type="text" id="noteInput" maxlength="60" placeholder="Ej. Turno de mañana" aria-label="Nota del registro">
     <div class="modal-actions">
-      <button class="btn" id="noteCancel">Sin nota</button>
-      <button class="btn btn-primary" id="noteOk">Guardar</button>
+      <button class="btn" id="noteCancel"><i class="fas fa-ban"></i> Sin nota</button>
+      <button class="btn btn-primary" id="noteOk"><i class="fas fa-check"></i> Guardar</button>
     </div>
   </div>
 </div>
@@ -247,7 +257,7 @@
     <h3><i class="fas fa-download" style="color:var(--accent)"></i> <span id="updateTitle">Nueva versión disponible</span></h3>
     <p id="updateMsg"></p>
     <div class="modal-actions">
-      <button class="btn" id="updateClose">Ahora no</button>
+      <button class="btn" id="updateClose"><i class="fas fa-clock"></i> Ahora no</button>
       <button class="btn btn-primary" id="updateDownload"><i class="fas fa-download"></i> Descargar APK</button>
     </div>
   </div>
