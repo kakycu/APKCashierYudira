@@ -319,6 +319,17 @@
   <button class="scroll-fab" id="btnScrollBottom" title="Ir al final" aria-label="Ir al final de la página"><i class="fas fa-arrow-down"></i></button>
 </div>
 
+<!-- AVISO: no hay datos para exportar. -->
+<div class="modal-overlay" id="emptyExportOverlay">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="emptyExportTitle">
+    <h3 id="emptyExportTitle"><i class="fas fa-circle-exclamation" style="color:var(--amber)"></i> Nada que exportar</h3>
+    <p id="emptyExportMsg">No hay registros guardados en el historial.</p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="emptyExportClose"><i class="fas fa-xmark"></i> Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DE GUARDADO: solo se cierra con el botón CERRAR; clic fuera no lo cierra. -->
 <div class="modal-overlay save-flash-overlay" id="saveFlashOverlay">
   <div class="save-flash" id="saveFlash" role="dialog" aria-modal="true" aria-labelledby="saveFlashTitle">

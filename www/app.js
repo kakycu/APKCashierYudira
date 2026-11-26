@@ -1134,6 +1134,22 @@ function historyTotals(rows){
   }, { total:0, bills:0 });
 }
 
+/* ---------- Aviso cuando no hay nada que exportar ---------- */
+function closeEmptyExport(){
+  const overlay = $('#emptyExportOverlay');
+  if(overlay) overlay.classList.remove('show');
+}
+function showEmptyExport(message){
+  const overlay = $('#emptyExportOverlay');
+  if(!overlay) return;
+  const text = $('#emptyExportMsg');
+  if(text) text.textContent = message || 'No hay registros guardados en el historial.';
+  overlay.classList.add('show');
+  const btn = $('#emptyExportClose');
+  if(btn && typeof btn.focus === 'function') btn.focus();
+  beep(360, 90);
+}
+
 /* ---------- Modal único de exportación ---------- */
 let exportMenuTrigger = null;
 let exportMenuRecord = null;
@@ -1158,6 +1174,14 @@ function openExportMenu(trigger, recordIdx = null){
   const menu = $('#exportMenu');
   const overlay = $('#exportOverlay');
   if(!menu || !overlay) return;
+  if(recordIdx == null && state.history.length === 0){
+    showEmptyExport('No hay registros guardados en el historial. Guarda un cálculo desde la calculadora y vuelve a intentarlo.');
+    return;
+  }
+  if(recordIdx != null && !state.history[recordIdx]){
+    showEmptyExport('El registro seleccionado ya no existe en el historial.');
+    return;
+  }
   closeDrawer();
   if(isExportMenuOpen() && exportMenuTrigger === trigger){ closeExportMenu(); return; }
   exportMenuTrigger = trigger || null;
@@ -1755,6 +1779,14 @@ function buildPdfBase64(dataRows){
 async function exportData(type, recordRows = null, recordIndex = null){
   const meta = EXPORT_META[type];
   if(!meta) return;
+  if(recordRows && recordRows.length === 0){
+    showEmptyExport('El registro seleccionado ya no existe en el historial.');
+    return;
+  }
+  if(!recordRows && state.history.length === 0){
+    showEmptyExport('No hay registros guardados en el historial. Guarda un cálculo desde la calculadora y vuelve a intentarlo.');
+    return;
+  }
   const options = $$('.export-option, [data-export-record]');
   options.forEach(b => { b.disabled = true; });
   const rows = recordRows ? exportRows(recordRows, recordIndex == null ? 0 : recordIndex) : null;
@@ -1788,6 +1820,7 @@ function initNativeUI(){
   const App = NativePlugins.App;
   if(App && typeof App.addListener === 'function'){
     App.addListener('backButton', ({ canGoBack } = {}) => {
+      if($('#emptyExportOverlay').classList.contains('show')){ closeEmptyExport(); return; }
       if(isSaveFlashOpen()){ return; }
       if(isHistoryDetailOpen()){ closeHistoryDetail(); return; }
       if(isExportMenuOpen()){ closeExportMenu(); return; }
@@ -1927,6 +1960,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeExportMenu();
     exportData(b.dataset.export, record ? [record] : null, record == null ? null : recordIdx);
   }));
+  $('#emptyExportClose').addEventListener('click', closeEmptyExport);
+  $('#emptyExportOverlay').addEventListener('click', e => {
+    if(e.target.id === 'emptyExportOverlay') closeEmptyExport();
+  });
   $('#saveFlashClose').addEventListener('click', closeSaveFlash);
   $('#exportClose').addEventListener('click', closeExportMenu);
   $('#exportOverlay').addEventListener('click', e => {
@@ -2005,6 +2042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btnScrollBottom').addEventListener('click', () => scrollPage(false));
 
   document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && $('#emptyExportOverlay').classList.contains('show')){ e.preventDefault(); closeEmptyExport(); return; }
     if(e.key === 'Escape' && isSaveFlashOpen()){ e.preventDefault(); return; }
     if(e.key === 'Escape' && $('#photoOverlay').classList.contains('show')){ e.preventDefault(); closePhoto(); return; }
     if(e.key === 'Escape' && $('#authorOverlay').classList.contains('show')){ e.preventDefault(); closeAuthor(); return; }
