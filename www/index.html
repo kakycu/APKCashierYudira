@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
@@ -19,7 +19,7 @@
     }catch(e){}
   })();
 </script>
-<title>Cashier de Yudira v2.0.1</title>
+<title>Cashier de Yudira v2.0.2</title>
 
 <!-- ✅ Font Awesome LOCAL (iconos; sin peticiones de red) -->
 <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
@@ -37,20 +37,13 @@
       <div class="fallback"><i class="fas fa-eye"></i></div>
     </div>
     <div class="app-title">
-      <div class="t1">Cashier de Yudira v2.0.1</div>
+      <div class="t1">Cashier de Yudira v2.0.2</div>
       <small>Calculadora de billetes · multidenominación</small>
     </div>
     <div class="titlebar-spacer"></div>
     <div class="titlebar-actions">
-      <!-- THEME TOGGLE SLIDER -->
-      <button class="theme-switch" id="themeToggle" role="switch" aria-checked="false" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">
-        <i class="fas fa-moon track-icon moon"></i>
-        <i class="fas fa-sun track-icon sun"></i>
-        <span class="thumb"><i class="fas fa-moon" id="thumbIcon"></i></span>
-      </button>
+      <button class="menu-btn" id="btnExportTop" title="Exportar" aria-label="Exportar historial" aria-haspopup="menu" aria-expanded="false" aria-controls="exportMenu"><i class="fas fa-file-export"></i></button>
       <div class="win-btns">
-        <button class="win-btn" id="winMin" title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>
-        <button class="win-btn" id="winMax" title="Maximizar" aria-label="Maximizar"><i class="fas fa-square"></i></button>
         <button class="win-btn close" id="winClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
       </div>
     </div>
@@ -105,6 +98,7 @@
           <button class="input-clear" id="clearDenomFilter" title="Quitar filtro" aria-label="Quitar filtro de denominaciones" hidden><i class="fas fa-xmark"></i></button>
         </div>
         <button class="btn" id="btnClearAll" title="Vaciar cantidades"><i class="fas fa-eraser"></i><span>Vaciar</span></button>
+        <button class="btn" id="btnCopyCalc" title="Copiar desglose"><i class="fas fa-copy"></i><span>Copiar</span></button>
         <button class="btn btn-primary" id="btnSaveHistory" title="Guardar en historial"><i class="fas fa-floppy-disk"></i><span>Guardar</span></button>
       </div>
     </div>
@@ -131,6 +125,7 @@
         <input type="text" id="searchHistory" placeholder="Buscar en historial...">
       </div>
       <button class="btn btn-danger" id="btnClearHistory" title="Borrar historial"><i class="fas fa-trash-can"></i><span>Borrar todo</span></button>
+      <button class="btn btn-export" id="btnExport" title="Exportar historial" aria-label="Exportar historial" aria-haspopup="menu" aria-expanded="false" aria-controls="exportMenu"><i class="fas fa-file-export"></i><span>Exportar</span></button>
     </div>
     <div class="history-list" id="historyList"></div>
   </section>
@@ -222,12 +217,11 @@
     <div class="sidebar-nav">
       <button class="side-link" id="sideSave"><i class="fas fa-floppy-disk"></i><span>Guardar registro</span></button>
       <button class="side-link" id="sideClear"><i class="fas fa-eraser"></i><span>Vaciar cantidades</span></button>
-      <button class="side-link" id="sideTheme"><i class="fas fa-circle-half-stroke"></i><span>Cambiar tema</span></button>
-      <button class="side-link" id="sideSound"><i class="fas fa-volume"></i><span>Sonidos</span><span class="side-state" id="sideSoundState">No</span></button>
+      <button class="side-link" id="sideExport"><i class="fas fa-file-export"></i><span>Exportar</span><span class="side-state">3 formatos</span></button>
       <button class="side-link" id="sidePrefs"><i class="fas fa-gear"></i><span>Preferencias</span></button>
       <button class="side-link" id="sideReplayIntro"><i class="fas fa-rotate-right"></i><span>Repetir animación de inicio</span></button>
       <button class="side-link" id="sideAuthor"><i class="fas fa-user-tie"></i><span>Autor</span></button>
-      <button class="side-link" id="sideUpdate"><i class="fas fa-download"></i><span>Buscar actualizaciones</span><span class="side-state" id="sideVersion">v2.0.1</span></button>
+      <button class="side-link" id="sideUpdate"><i class="fas fa-download"></i><span>Buscar actualizaciones</span><span class="side-state" id="sideVersion">v2.0.2</span></button>
     </div>
   </div>
 
@@ -325,6 +319,56 @@
   <button class="scroll-fab" id="btnScrollBottom" title="Ir al final" aria-label="Ir al final de la página"><i class="fas fa-arrow-down"></i></button>
 </div>
 
+<!-- MODAL DE GUARDADO: solo se cierra con el botón CERRAR; clic fuera no lo cierra. -->
+<div class="modal-overlay save-flash-overlay" id="saveFlashOverlay">
+  <div class="save-flash" id="saveFlash" role="dialog" aria-modal="true" aria-labelledby="saveFlashTitle">
+    <div class="save-flash-ring"><i class="fas fa-check"></i></div>
+    <strong id="saveFlashTitle">¡REGISTRO GUARDADO!</strong>
+    <span id="saveFlashAmount"></span>
+    <button class="btn btn-primary save-flash-close" id="saveFlashClose"><i class="fas fa-xmark"></i><span>CERRAR</span></button>
+  </div>
+</div>
+
+<!-- MODAL ÚNICO DE EXPORTACIÓN: se abre desde la barra, el historial o el menú lateral. -->
+<div class="modal-overlay" id="exportOverlay">
+  <div class="export-menu" id="exportMenu" role="dialog" aria-modal="true" aria-label="Exportar historial" hidden>
+    <div class="export-menu-head">
+      <i class="fas fa-file-export"></i>
+      <div class="export-head-text"><strong id="exportMenuTitle">Exportar historial</strong><small id="exportMenuSubtitle">Elige el formato de salida</small></div>
+      <button class="export-close" id="exportClose" title="Cerrar" aria-label="Cerrar exportación"><i class="fas fa-xmark"></i></button>
+    </div>
+    <button class="export-option" role="menuitem" data-export="xlsx"><i class="fas fa-file-excel"></i><span>a Excel</span><small>.xlsx</small></button>
+    <button class="export-option" role="menuitem" data-export="docx"><i class="fas fa-file-word"></i><span>a Word</span><small>.docx</small></button>
+    <button class="export-option" role="menuitem" data-export="pdf"><i class="fas fa-file-pdf"></i><span>a PDF</span><small>.pdf</small></button>
+    <div class="export-menu-foot"><i class="fas fa-lock"></i><span>100 % local · sin red</span></div>
+  </div>
+</div>
+
+<!-- DETALLE DE REGISTRO: se abre al tocar una tarjeta del historial. -->
+<div class="modal-overlay" id="historyDetailOverlay">
+  <div class="history-detail" id="historyDetail" role="dialog" aria-modal="true" aria-label="Detalle del registro">
+    <div class="history-detail-head">
+      <i class="fas fa-file-circle-check"></i>
+      <div class="history-detail-title"><strong id="historyDetailTitle">Detalle del registro</strong><small id="historyDetailDate"></small></div>
+      <button class="export-close" id="historyDetailClose" title="Cerrar" aria-label="Cerrar detalle"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="history-detail-body" id="historyDetailBody"></div>
+    <div class="history-detail-export" aria-label="Exportar este registro">
+      <button class="btn btn-sm" id="histDetailXlsx" data-export-record="xlsx"><i class="fas fa-file-excel"></i><span>Excel</span></button>
+      <button class="btn btn-sm" id="histDetailDocx" data-export-record="docx"><i class="fas fa-file-word"></i><span>Word</span></button>
+      <button class="btn btn-sm" id="histDetailPdf" data-export-record="pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></button>
+    </div>
+    <div class="history-detail-actions">
+      <button class="btn btn-sm btn-ghost" id="histDetailCopy"><i class="fas fa-copy"></i><span>Copiar</span></button>
+      <button class="btn btn-sm btn-primary" id="histDetailRestore"><i class="fas fa-rotate-left"></i><span>Restaurar</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Exportación local: hojas de cálculo, documentos y PDF, sin CDN ni peticiones de red. -->
+<script src="vendor/exceljs/exceljs.min.js"></script>
+<script src="vendor/jszip/jszip.min.js"></script>
+<script src="vendor/jspdf/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

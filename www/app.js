@@ -3,7 +3,8 @@
    ============================================================ */
 const STORAGE_KEY = 'visiones_cashflow_v2';
 const THEME_KEY = 'visiones_theme';
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
+const APP_NAME = 'ChashierYudira';
 const RELEASES_API = 'https://api.github.com/repos/kakycu/APKCashierYudira/releases/latest';
 const RELEASES_PAGE = 'https://github.com/kakycu/APKCashierYudira/releases';
 
@@ -58,44 +59,22 @@ let state = {
 };
 
 /* ============================================================
-   TEMA
+   TEMA: SIEMPRE OSCURO
+   Cualquier valor guardado previamente se sobrescribe al arrancar.
    ============================================================ */
-function getPreferredTheme(){
-  const saved = localStorage.getItem(THEME_KEY);
-  if(saved === 'light' || saved === 'dark') return saved;
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-}
-
-function updateThumbIcon(theme){
-  const thumbIcon = document.getElementById('thumbIcon');
-  if(!thumbIcon) return;
-  thumbIcon.className = 'fas ' + (theme === 'dark' ? 'fa-moon' : 'fa-sun');
-}
-
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme', theme);
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', 'dark');
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', theme === 'light' ? '#e8eef7' : '#0a0c10');
-  localStorage.setItem(THEME_KEY, theme);
-  mirrorToNative(THEME_KEY, theme);
-  syncStatusBar(theme);
-  updateThumbIcon(theme);
-  const toggle = document.getElementById('themeToggle');
-  if(toggle) toggle.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
+  if(meta) meta.setAttribute('content', '#0a0c10');
+  try{ localStorage.setItem(THEME_KEY, 'dark'); }catch(e){}
+  mirrorToNative(THEME_KEY, 'dark');
+  syncStatusBar();
 }
 
-async function syncStatusBar(theme){
+async function syncStatusBar(){
   if(!isNative) return;
-  await nativeCall('StatusBar','setStyle',{ style: theme === 'light' ? 'DARK' : 'LIGHT' });
-  await nativeCall('StatusBar','setBackgroundColor',{ color: theme === 'light' ? '#e8eef7' : '#0a0c10' });
-}
-
-function toggleTheme(){
-  const current = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = current === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  toast(next === 'light' ? 'Tema claro activado ☀️' : 'Tema oscuro activado 🌙', 'info');
-  beep(next === 'light' ? 900 : 500, 50);
+  await nativeCall('StatusBar','setStyle',{ style:'LIGHT' });
+  await nativeCall('StatusBar','setBackgroundColor',{ color:'#0a0c10' });
 }
 
 /* ============================================================
@@ -147,6 +126,28 @@ function fmtMoney(n){
   }catch(e){
     return Number(n).toFixed(2);
   }
+}
+
+function pad2(n){ return String(n).padStart(2, '0'); }
+function dateObj(value){
+  const d = value instanceof Date ? value : new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+function formatDate12(value){
+  const d = dateObj(value);
+  return d ? `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}` : '—';
+}
+function formatTime12(value){
+  const d = dateObj(value);
+  if(!d) return '—';
+  let h = d.getHours();
+  const suffix = h < 12 ? 'a.m.' : 'p.m.';
+  h = h % 12 || 12;
+  return `${pad2(h)}:${pad2(d.getMinutes())} ${suffix}`;
+}
+function formatDateTime12(value){
+  const d = dateObj(value);
+  return d ? `${formatDate12(d)} ${formatTime12(d)}` : '—';
 }
 
 function colorForDenom(denom){
@@ -218,29 +219,52 @@ function toast(msg, type = 'info'){
 
 function confettiBurst(){
   if(!state.prefs.confetti) return;
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const colors = isLight
-    ? ['#1d4ed8','#6d28d9','#15803d','#b45309','#be185d','#0e7490']
-    : ['#5b8cff','#8b5cf6','#22c55e','#f59e0b','#ec4899','#06b6d4'];
-  const n = 32;
+  const colors = ['#5b8cff','#8b5cf6','#22c55e','#f59e0b','#ec4899','#06b6d4','#ffffff'];
+  const trigger = $('#btnSaveHistory');
+  const rect = trigger && trigger.getBoundingClientRect ? trigger.getBoundingClientRect() : null;
+  const originX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+  const originY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+  const n = 58;
   for(let i = 0; i < n; i++){
     const p = document.createElement('div');
+    const size = 9 + Math.random() * 8;
+    const glow = colors[i % colors.length];
     p.style.cssText = `
-      position:fixed;left:50%;top:50%;width:8px;height:8px;
-      background:${colors[i%colors.length]};border-radius:${Math.random()>.5?'50%':'2px'};
-      pointer-events:none;z-index:99999;
+      position:fixed;left:${originX}px;top:${originY}px;width:${size}px;height:${size}px;
+      background:${glow};border-radius:${Math.random()>.5?'50%':'3px'};
+      box-shadow:0 0 14px ${glow};pointer-events:none;z-index:100000;
       transform:translate(-50%,-50%);
     `;
     document.body.appendChild(p);
-    const angle = (Math.PI*2*i)/n + Math.random()*0.4;
-    const dist = 100 + Math.random()*140;
+    const angle = (Math.PI*2*i)/n + (Math.random()-.5)*0.5;
+    const dist = 180 + Math.random()*190;
     const x = Math.cos(angle)*dist;
-    const y = Math.sin(angle)*dist - 40;
+    const y = Math.sin(angle)*dist - 60;
     p.animate([
-      { transform:'translate(-50%,-50%) scale(1)', opacity:1 },
-      { transform:`translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(0.3) rotate(${Math.random()*720}deg)`, opacity:0 }
-    ], { duration: 700 + Math.random()*400, easing:'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => p.remove();
+      { transform:'translate(-50%,-50%) scale(.4)', opacity:0 },
+      { transform:`translate(calc(-50% + ${x*.35}px), calc(-50% + ${y*.35 - 40}px)) scale(1.25)`, opacity:1, offset:.18 },
+      { transform:`translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(.2) rotate(${Math.random()*900}deg)`, opacity:0 }
+    ], { duration: 1000 + Math.random()*500, easing:'cubic-bezier(.16,.9,.25,1)' }).onfinish = () => p.remove();
   }
+}
+
+/* Modal grande de guardado: permanece hasta pulsar CERRAR (sin cierre por fuera). */
+function isSaveFlashOpen(){
+  const overlay = $('#saveFlashOverlay');
+  return !!(overlay && overlay.classList.contains('show'));
+}
+function closeSaveFlash(){
+  const overlay = $('#saveFlashOverlay');
+  if(overlay) overlay.classList.remove('show');
+}
+function saveFlash(amountText){
+  const amount = $('#saveFlashAmount');
+  if(!amount) return;
+  amount.textContent = `${amountText} · en el historial`;
+  const overlay = $('#saveFlashOverlay');
+  overlay.classList.add('show');
+  const closeBtn = $('#saveFlashClose');
+  if(closeBtn && closeBtn.focus) closeBtn.focus();
 }
 
 function escapeHtml(s){
@@ -415,6 +439,46 @@ function refreshTotals(){
 /* ============================================================
    RENDER: HISTORIAL
    ============================================================ */
+function breakdownEntries(h){
+  return Object.entries(h.snapshot || {})
+    .map(([denom, qty]) => ({ denom:Number(denom), qty:Number(qty) }))
+    .filter(x => x.denom > 0 && x.qty > 0)
+    .sort((a, b) => b.denom - a.denom);
+}
+function breakdownLine(x){
+  return `${x.qty}×${x.denom.toLocaleString('es-MX')} = ${fmtMoney(x.denom * x.qty)}`;
+}
+function historyClipboardText(h){
+  const sym = h.currencySymbol || '$';
+  const code = h.currencyCode || 'CUP';
+  const entries = breakdownEntries(h);
+  const bills = entries.reduce((sum, x) => sum + x.qty, 0);
+  const lines = entries.length
+    ? entries.map(breakdownLine)
+    : ['Sin desglose'];
+  const note = String(h.note || '').trim() || 'Sin nota';
+  return [
+    'Copiado de:',
+    APP_NAME,
+    `Versión: v${APP_VERSION}`,
+    '--------------------------',
+    'Desglose:',
+    '--------------------------',
+    'Fecha:',
+    formatDateTime12(h.date),
+    'Nota:',
+    note,
+    '--------------------------',
+    'Total:',
+    `${sym}${fmtMoney(h.total)} ${code}`,
+    'Repartidos en:',
+    `${bills} billetes`,
+    'Desglose:',
+    '---------------',
+    ...lines
+  ].join('\n');
+}
+
 function renderHistory(filter = ''){
   const list = $('#historyList');
   const f = filter.trim().toLowerCase();
@@ -434,30 +498,27 @@ function renderHistory(filter = ''){
   }
 
   list.innerHTML = items.reverse().map(h => {
-    const date = new Date(h.date);
-    const ds = date.toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
-    const ts = date.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+    const ds = formatDate12(h.date);
+    const ts = formatTime12(h.date);
     const curCode = h.currencyCode || 'CUP';
     const sym = h.currencySymbol || '$';
-    const breakdown = Object.entries(h.snapshot || {})
-      .map(([denom, qty]) => ({ denom: Number(denom), qty: Number(qty) }))
-      .filter(x => x.denom > 0 && x.qty > 0)
-      .sort((a, b) => b.denom - a.denom)
-      .map(x => `<span>${x.qty}×${x.denom.toLocaleString('es-MX')}</span>`)
+    const breakdown = breakdownEntries(h)
+      .map(x => `<span>${breakdownLine(x)}</span>`)
       .join('') || '<span class="bd-none">Sin desglose</span>';
     return `
-      <div class="history-item">
+      <div class="history-item history-card-open" data-openhist="${h._idx}" role="button" tabindex="0" aria-label="Ver detalle del registro ${h._idx + 1}">
         <div class="history-idx">#${h._idx + 1}</div>
         <div class="history-body">
           <div class="history-total">${sym}${fmtMoney(h.total)} <span class="hcur">${curCode}</span></div>
           <div class="history-meta">
             <span><i class="fas fa-layer-group"></i> ${h.bills} billetes</span>
-            <span><i class="fas fa-calendar"></i> ${ds} · ${ts}</span>
+            <span><i class="fas fa-calendar"></i> ${ds} ${ts}</span>
             ${h.note ? `<span><i class="fas fa-tag"></i> ${escapeHtml(h.note)}</span>` : ''}
           </div>
           <div class="history-breakdown" aria-label="Desglose de billetes">${breakdown}</div>
         </div>
         <div class="history-actions">
+          <button class="btn btn-sm btn-ghost" data-exporthist="${h._idx}" title="Exportar este registro" aria-label="Exportar registro ${h._idx + 1}"><i class="fas fa-file-export"></i></button>
           <button class="btn btn-sm btn-ghost" data-restore="${h._idx}" title="Restaurar cantidades" aria-label="Restaurar"><i class="fas fa-rotate-left"></i></button>
           <button class="btn btn-sm btn-ghost" data-copyhist="${h._idx}" title="Copiar" aria-label="Copiar"><i class="fas fa-copy"></i></button>
           <button class="btn btn-sm btn-ghost" data-delhist="${h._idx}" title="Eliminar" aria-label="Eliminar"><i class="fas fa-trash-can"></i></button>
@@ -466,9 +527,67 @@ function renderHistory(filter = ''){
     `;
   }).join('');
 
-  list.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', () => restoreHistory(+b.dataset.restore)));
-  list.querySelectorAll('[data-copyhist]').forEach(b => b.addEventListener('click', () => copyHistory(+b.dataset.copyhist)));
-  list.querySelectorAll('[data-delhist]').forEach(b => b.addEventListener('click', () => deleteHistory(+b.dataset.delhist)));
+  list.querySelectorAll('[data-openhist]').forEach(card => {
+    card.addEventListener('click', e => {
+      if(e.target.closest('button')) return;
+      openHistoryDetail(+card.dataset.openhist);
+    });
+    card.addEventListener('keydown', e => {
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openHistoryDetail(+card.dataset.openhist); }
+    });
+  });
+  list.querySelectorAll('[data-exporthist]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    openExportMenu(b, +b.dataset.exporthist);
+  }));
+  list.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); restoreHistory(+b.dataset.restore);
+  }));
+  list.querySelectorAll('[data-copyhist]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); copyHistory(+b.dataset.copyhist);
+  }));
+  list.querySelectorAll('[data-delhist]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); deleteHistory(+b.dataset.delhist);
+  }));
+}
+
+/* ---------- Detalle del registro guardado ---------- */
+let historyDetailIndex = null;
+function isHistoryDetailOpen(){
+  const overlay = $('#historyDetailOverlay');
+  return !!(overlay && overlay.classList.contains('show'));
+}
+function closeHistoryDetail(){
+  const overlay = $('#historyDetailOverlay');
+  if(overlay) overlay.classList.remove('show');
+  historyDetailIndex = null;
+}
+function openHistoryDetail(idx){
+  const h = state.history[idx];
+  if(!h) return;
+  historyDetailIndex = idx;
+  const ds = formatDate12(h.date);
+  const ts = formatTime12(h.date);
+  const sym = h.currencySymbol || '$';
+  const code = h.currencyCode || 'CUP';
+  const note = String(h.note || '').trim() || 'Sin nota';
+  const entries = breakdownEntries(h);
+  const breakdown = entries.length
+    ? entries.map(x => `<span>${breakdownLine(x)}</span>`).join('')
+    : '<span>Sin desglose</span>';
+  $('#historyDetailTitle').textContent = `Registro #${idx + 1}`;
+  $('#historyDetailDate').textContent = `${ds} ${ts}`;
+  $('#historyDetailBody').innerHTML = `
+    <div class="detail-total"><strong>${sym}${fmtMoney(h.total)}</strong><span>${code}</span></div>
+    <div class="detail-grid">
+      <div class="detail-cell"><small>Billetes</small><strong>${h.bills}</strong></div>
+      <div class="detail-cell"><small>Fecha</small><strong>${ds} ${ts}</strong></div>
+      <div class="detail-cell wide"><small>Nota</small><strong>${escapeHtml(note)}</strong></div>
+      <div class="detail-cell wide"><small>Desglose</small><div class="detail-breakdown">${breakdown}</div></div>
+    </div>
+  `;
+  $('#historyDetailOverlay').classList.add('show');
+  beep(700, 30);
 }
 
 /* ============================================================
@@ -586,6 +705,32 @@ function renderStats(){
 /* ============================================================
    ACCIONES
    ============================================================ */
+async function copyCurrentCalc(){
+  const { total, bills } = calcTotals();
+  if(total === 0){
+    toast('No hay nada que copiar (total 0.00)', 'error');
+    return;
+  }
+  const note = await askNote();
+  if(note === null) return;
+  const snapshot = {};
+  for(const d of state.denoms){
+    if(state.quantities[d]) snapshot[d] = state.quantities[d];
+  }
+  const record = {
+    total,
+    bills,
+    date: new Date().toISOString(),
+    note,
+    snapshot,
+    currencyCode: state.currency.code,
+    currencySymbol: state.currency.symbol
+  };
+  const ok = await copyText(historyClipboardText(record));
+  toast(ok ? 'Copiado al portapapeles' : 'No se pudo copiar', ok ? 'success' : 'error');
+  if(ok) beep(760, 50);
+}
+
 async function saveToHistory(){
   const { total, bills } = calcTotals();
   if(total === 0){
@@ -613,6 +758,7 @@ async function saveToHistory(){
   renderHistory($('#searchHistory').value);
   renderStats();
   confettiBurst();
+  saveFlash(`${state.currency.symbol}${fmtMoney(total)} ${state.currency.code}`);
   beep(900, 120);
   toast('Registro guardado en historial ✓', 'success');
 }
@@ -658,10 +804,7 @@ async function copyText(text){
 async function copyHistory(idx){
   const h = state.history[idx];
   if(!h) return;
-  const sym = h.currencySymbol || '$';
-  const code = h.currencyCode || 'CUP';
-  const text = `${sym}${fmtMoney(h.total)} ${code} · ${h.bills} billetes · ${new Date(h.date).toLocaleString('es-MX')}${h.note?' · '+h.note:''}`;
-  const ok = await copyText(text);
+  const ok = await copyText(historyClipboardText(h));
   toast(ok ? 'Copiado al portapapeles' : 'No se pudo copiar', ok ? 'success' : 'error');
 }
 
@@ -837,8 +980,6 @@ function toggleDrawer(){ isDrawerOpen() ? closeDrawer() : openDrawer(); }
 function updateDrawerState(){
   const badge = $('#sideHistBadge');
   if(badge) badge.textContent = state.history.length;
-  const sound = $('#sideSoundState');
-  if(sound) sound.textContent = state.prefs.sound ? 'Sí' : 'No';
   const version = $('#sideVersion');
   if(version && version.textContent === '…') return;
   if(version) version.textContent = 'v' + APP_VERSION;
@@ -947,6 +1088,699 @@ async function checkForUpdates(opts){
   }
 }
 
+/* ============================================================
+   EXPORTACIONES LOCALES (EXCEL / WORD / PDF)
+   Un único menú; librerías en www/vendor, sin CDN ni red.
+   ============================================================ */
+const EXPORT_META = {
+  xlsx:{ label:'Excel', ext:'xlsx', mime:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+  docx:{ label:'Word', ext:'docx', mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  pdf:{ label:'PDF', ext:'pdf', mime:'application/pdf' }
+};
+
+function exportTimestamp(){
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+function exportDateLabel(value){
+  return formatDateTime12(value);
+}
+
+function exportRows(source = state.history, startIndex = 0){
+  return source.map((h, idx) => {
+    const entries = breakdownEntries(h);
+    const bills = entries.reduce((sum, x) => sum + x.qty, 0);
+    const total = Number(h.total) || 0;
+    return {
+      index: startIndex + idx + 1,
+      date: exportDateLabel(h.date),
+      note: String(h.note || '').trim() || '—',
+      currency: h.currencyCode || state.currency.code,
+      symbol: h.currencySymbol || state.currency.symbol,
+      total,
+      bills,
+      breakdown: entries.map(breakdownLine).join(' | ') || '—'
+    };
+  });
+}
+
+function historyTotals(rows){
+  return rows.reduce((acc, r) => {
+    acc.total += r.total;
+    acc.bills += r.bills;
+    return acc;
+  }, { total:0, bills:0 });
+}
+
+/* ---------- Modal único de exportación ---------- */
+let exportMenuTrigger = null;
+let exportMenuRecord = null;
+function isExportMenuOpen(){
+  const menu = $('#exportMenu');
+  return !!(menu && !menu.hidden);
+}
+function closeExportMenu(){
+  const menu = $('#exportMenu');
+  const overlay = $('#exportOverlay');
+  if(menu) menu.hidden = true;
+  if(overlay) overlay.classList.remove('show');
+  $$('[aria-controls="exportMenu"]').forEach(b => b.setAttribute('aria-expanded','false'));
+  exportMenuTrigger = null;
+  exportMenuRecord = null;
+  const title = $('#exportMenuTitle');
+  const subtitle = $('#exportMenuSubtitle');
+  if(title) title.textContent = 'Exportar historial';
+  if(subtitle) subtitle.textContent = 'Elige el formato de salida';
+}
+function openExportMenu(trigger, recordIdx = null){
+  const menu = $('#exportMenu');
+  const overlay = $('#exportOverlay');
+  if(!menu || !overlay) return;
+  closeDrawer();
+  if(isExportMenuOpen() && exportMenuTrigger === trigger){ closeExportMenu(); return; }
+  exportMenuTrigger = trigger || null;
+  exportMenuRecord = recordIdx == null ? null : recordIdx;
+  const record = exportMenuRecord == null ? null : state.history[exportMenuRecord];
+  const title = $('#exportMenuTitle');
+  const subtitle = $('#exportMenuSubtitle');
+  if(title) title.textContent = record ? `Exportar registro #${exportMenuRecord + 1}` : 'Exportar historial';
+  if(subtitle) subtitle.textContent = record ? 'Solo el registro seleccionado' : 'Elige el formato de salida';
+  menu.hidden = false;
+  overlay.classList.add('show');
+  $$('[aria-controls="exportMenu"]').forEach(b => b.setAttribute('aria-expanded', b === trigger ? 'true' : 'false'));
+  const first = menu.querySelector('.export-option');
+  if(first && typeof first.focus === 'function') setTimeout(() => first.focus(), 40);
+  beep(700, 30);
+}
+
+/* ---------- utilidades de archivo ---------- */
+function bytesToBase64(input){
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  let binary = '';
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  }
+  return btoa(binary);
+}
+function base64ToBytes(base64){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function blobToBase64(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+function downloadBase64(base64, filename, mime){
+  const blob = new Blob([base64ToBytes(base64)], { type:mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function shareOrDownload(base64, filename, mime, label){
+  if(isNative && NativePlugins.Filesystem && NativePlugins.Share){
+    try{
+      await NativePlugins.Filesystem.writeFile({
+        path:filename, data:base64, directory:'CACHE', recursive:true
+      });
+      const uriResult = await NativePlugins.Filesystem.getUri({ path:filename, directory:'CACHE' });
+      await NativePlugins.Share.share({
+        title:label,
+        text:`${label} · ${filename}`,
+        url:uriResult.uri,
+        dialogTitle:`Compartir ${label}`
+      });
+      toast(`${label} listo para compartir`, 'success');
+      return;
+    }catch(e){ console.warn('[exportación nativa]', e); }
+  }
+  downloadBase64(base64, filename, mime);
+  toast(`${label} descargado`, 'success');
+}
+
+/* ---------- Excel profesional ---------- */
+async function buildWorkbookBase64(dataRows){
+  const XL = window.ExcelJS;
+  if(!XL || !XL.Workbook) throw new Error('ExcelJS no disponible');
+  const rows = dataRows || exportRows();
+  const summary = historyTotals(rows);
+  const generated = exportDateLabel(new Date());
+  const wb = new XL.Workbook();
+  wb.creator = 'Unicornio Software®';
+  wb.lastModifiedBy = 'Unicornio Software®';
+  wb.title = 'Informe de historial - Cashier de Yudira';
+  wb.subject = 'Exportación local del historial de billetes';
+  wb.description = `Generado ${generated} · Versión ${APP_VERSION}`;
+  wb.company = 'Unicornio Software®';
+  wb.created = new Date();
+  wb.modified = new Date();
+
+  const ws = wb.addWorksheet('Historial', {
+    properties:{ defaultRowHeight:18 },
+    views:[{ state:'frozen', ySplit:9 }],
+    pageSetup:{
+      orientation:'landscape',
+      horizontalCentered:true,
+      fitToPage:true,
+      fitToWidth:1,
+      fitToHeight:0,
+      printTitleRows:'1:9',
+      margins:{ left:0.3, right:0.3, top:0.55, bottom:0.55, header:0.2, footer:0.25 }
+    },
+    headerFooter:{
+      oddHeader:'&C&"Inter,Bold"&12 CASHIER DE YUDIRA',
+      oddFooter:`&L© Unicornio Software® - 2026&C Página &P de &N&RGenerado ${generated}`
+    }
+  });
+  ws.columns = [
+    { key:'index', width:8 }, { key:'date', width:20 }, { key:'note', width:30 },
+    { key:'currency', width:12 }, { key:'total', width:17 }, { key:'bills', width:12 },
+    { key:'breakdown', width:50 }
+  ];
+
+  const thin = { style:'thin', color:{ argb:'FFCBD5E1' } };
+  const border = { top:thin, left:thin, bottom:thin, right:thin };
+  const fillDark = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF0F2540' } };
+  const fillLight = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFE8EEF9' } };
+  const fillSoft = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF8FAFC' } };
+  const font = (size, bold, argb) => ({ name:'Inter', size, bold, color:{ argb } });
+
+  function styleCell(cell, s){
+    if(s.font) cell.font = s.font;
+    if(s.fill) cell.fill = s.fill;
+    if(s.alignment) cell.alignment = s.alignment;
+    if(s.border) cell.border = s.border;
+    if(s.numFmt) cell.numFmt = s.numFmt;
+  }
+  function paint(range, s){
+    const a = ws.getCell(range.split(':')[0]);
+    const b = ws.getCell(range.split(':')[1]);
+    for(let r=a.row;r<=b.row;r++){
+      for(let c=a.col;c<=b.col;c++) styleCell(ws.getCell(r,c), s);
+    }
+  }
+
+  /* Cabecera corporativa */
+  paint('A1:G2', { fill:fillDark, alignment:{ vertical:'middle', horizontal:'center' } });
+  ws.mergeCells('A1:G2');
+  ws.getCell('A1').value = 'CASHIER DE YUDIRA';
+  ws.getCell('A1').font = font(20, true, 'FFFFFFFF');
+  ws.getRow(1).height = 28;
+  ws.getRow(2).height = 16;
+
+  paint('A3:G3', { fill:fillLight, alignment:{ vertical:'middle', horizontal:'center' } });
+  ws.mergeCells('A3:G3');
+  ws.getCell('A3').value = `INFORME PROFESIONAL DE HISTORIAL · v${APP_VERSION}`;
+  ws.getCell('A3').font = font(11, true, 'FF0F2540');
+  ws.getRow(3).height = 22;
+
+  paint('A4:B4', { fill:fillSoft, border, alignment:{ vertical:'middle', horizontal:'left' } });
+  paint('C4:D4', { fill:fillSoft, border, alignment:{ vertical:'middle', horizontal:'left' } });
+  paint('E4:G4', { fill:fillSoft, border, alignment:{ vertical:'middle', horizontal:'left' } });
+  ws.mergeCells('A4:B4'); ws.mergeCells('C4:D4'); ws.mergeCells('E4:G4');
+  ws.getCell('A4').value = `Generado: ${generated}`;
+  ws.getCell('C4').value = `Moneda: ${state.currency.code} (${state.currency.symbol})`;
+  ws.getCell('E4').value = `Registros: ${rows.length}`;
+  ['A4','C4','E4'].forEach(ref => { ws.getCell(ref).font = font(10, true, 'FF475569'); });
+  ws.getRow(4).height = 20;
+  ws.getRow(5).height = 8;
+
+  /* Tarjetas de resumen */
+  const cards = [
+    ['A','B','REGISTROS', rows.length, null],
+    ['C','D','TOTAL HISTORIAL', summary.total, '#,##0.00'],
+    ['E','F','BILLETES', summary.bills, '0'],
+    ['G','G','MONEDA', state.currency.code, null]
+  ];
+  cards.forEach(([a,b,label,value,numFmt]) => {
+    paint(`${a}6:${b}6`, { fill:fillLight, border, alignment:{ vertical:'middle', horizontal:'center' } });
+    paint(`${a}7:${b}7`, { fill:fillSoft, border, alignment:{ vertical:'middle', horizontal:'center' } });
+    if(a !== b){ ws.mergeCells(`${a}6:${b}6`); ws.mergeCells(`${a}7:${b}7`); }
+    ws.getCell(`${a}6`).value = label;
+    ws.getCell(`${a}6`).font = font(9, true, 'FF64748B');
+    ws.getCell(`${a}7`).value = value;
+    ws.getCell(`${a}7`).font = font(14, true, 'FF0F2540');
+    if(numFmt) ws.getCell(`${a}7`).numFmt = numFmt;
+  });
+  ws.getRow(6).height = 18;
+  ws.getRow(7).height = 26;
+  ws.getRow(8).height = 8;
+
+  /* Tabla */
+  const headers = ['N.º','Fecha','Nota','Moneda','Total','Billetes','Desglose'];
+  paint('A9:G9', { fill:fillDark, border, alignment:{ vertical:'middle', horizontal:'center', wrapText:true } });
+  headers.forEach((h,i) => {
+    const cell = ws.getCell(9, i+1);
+    cell.value = h;
+    cell.font = font(10, true, 'FFFFFFFF');
+  });
+  ws.getRow(9).height = 24;
+
+  rows.forEach((r,i) => {
+    const rowNumber = 10 + i;
+    const row = ws.getRow(rowNumber);
+    row.values = [r.index, r.date, r.note, r.currency, r.total, r.bills, r.breakdown];
+    row.height = 22;
+    row.eachCell((cell, col) => {
+      cell.border = border;
+      cell.font = font(10, col === 5, 'FF172233');
+      cell.alignment = {
+        vertical:'middle',
+        horizontal:(col === 1 || col === 4 || col === 6) ? 'center' : (col === 5 ? 'right' : 'left'),
+        wrapText:(col === 3 || col === 7)
+      };
+      if(i % 2 === 0) cell.fill = fillSoft;
+    });
+    row.getCell(5).numFmt = '#,##0.00';
+    row.getCell(6).numFmt = '0';
+  });
+  const lastDataRow = 9 + rows.length;
+  if(rows.length) ws.autoFilter = { from:'A9', to:`G${lastDataRow}` };
+
+  const totalRow = 10 + rows.length;
+  paint(`A${totalRow}:G${totalRow}`, { fill:fillLight, border, alignment:{ vertical:'middle' } });
+  ws.mergeCells(`A${totalRow}:D${totalRow}`);
+  const tr = ws.getRow(totalRow);
+  tr.getCell(1).value = 'TOTAL DE REGISTROS';
+  tr.getCell(1).font = font(10, true, 'FF0F2540');
+  tr.getCell(5).value = rows.length
+    ? { formula:`SUM(E10:E${lastDataRow})`, result:summary.total }
+    : 0;
+  tr.getCell(6).value = rows.length
+    ? { formula:`SUM(F10:F${lastDataRow})`, result:summary.bills }
+    : 0;
+  tr.getCell(5).font = font(11, true, 'FF0F2540');
+  tr.getCell(6).font = font(11, true, 'FF0F2540');
+  tr.getCell(5).numFmt = '#,##0.00';
+  tr.getCell(6).numFmt = '0';
+  tr.getCell(5).alignment = { vertical:'middle', horizontal:'right' };
+  tr.getCell(6).alignment = { vertical:'middle', horizontal:'center' };
+  tr.height = 26;
+
+  const noteRow = totalRow + 2;
+  paint(`A${noteRow}:G${noteRow}`, { alignment:{ vertical:'middle', horizontal:'center' } });
+  ws.mergeCells(`A${noteRow}:G${noteRow}`);
+  ws.getCell(`A${noteRow}`).value = '© Unicornio Software® - 2026 · 100 % local · En colaboración con MiPyMe "Visiones"';
+  ws.getCell(`A${noteRow}`).font = font(9, false, 'FF64748B');
+  ws.getRow(noteRow).height = 20;
+  ws.pageSetup.printArea = `A1:G${noteRow}`;
+
+  /* Segunda hoja: resumen ejecutativo con la misma identidad visual. */
+  const rs = wb.addWorksheet('Resumen', {
+    properties:{ defaultRowHeight:18 },
+    views:[{ state:'frozen', ySplit:3 }],
+    pageSetup:{
+      orientation:'portrait',
+      horizontalCentered:true,
+      fitToPage:true,
+      fitToWidth:1,
+      fitToHeight:0,
+      margins:{ left:0.4, right:0.4, top:0.55, bottom:0.55, header:0.2, footer:0.25 }
+    },
+    headerFooter:{
+      oddHeader:'&C&"Inter,Bold"&12 CASHIER DE YUDIRA',
+      oddFooter:`&L© Unicornio Software® - 2026&C Página &P de &N&RGenerado ${generated}`
+    }
+  });
+  rs.columns = [{ key:'label', width:28 }, { key:'value', width:68 }];
+  rs.mergeCells('A1:B2');
+  rs.getCell('A1').value = 'RESUMEN EJECUTIVO';
+  rs.getCell('A1').font = font(18, true, 'FFFFFFFF');
+  rs.getCell('A1').alignment = { vertical:'middle', horizontal:'center' };
+  for(let r=1;r<=2;r++) for(let c=1;c<=2;c++) rs.getCell(r,c).fill = fillDark;
+  rs.getRow(1).height = 28;
+  rs.getRow(2).height = 14;
+  rs.mergeCells('A3:B3');
+  rs.getCell('A3').value = `Cashier de Yudira · v${APP_VERSION}`;
+  rs.getCell('A3').font = font(11, true, 'FF0F2540');
+  rs.getCell('A3').alignment = { vertical:'middle', horizontal:'center' };
+  rs.getCell('A3').fill = fillLight;
+  rs.getRow(3).height = 22;
+
+  const metrics = [
+    ['Generado', generated, null],
+    ['Registros guardados', rows.length, '0'],
+    ['Total del historial', summary.total, '#,##0.00'],
+    ['Billetes del historial', summary.bills, '0'],
+    ['Moneda actual', `${state.currency.code} (${state.currency.symbol})`, null],
+    ['Total actual', calcTotals().total, '#,##0.00'],
+    ['Billetes actuales', calcTotals().bills, '0'],
+    ['Denominaciones activas', state.denoms.slice().sort((a,b) => b-a).join(', '), null]
+  ];
+  metrics.forEach(([label, value, numFmt], i) => {
+    const rowNumber = 5 + i;
+    const labelCell = rs.getCell(rowNumber, 1);
+    const valueCell = rs.getCell(rowNumber, 2);
+    labelCell.value = label;
+    valueCell.value = value;
+    labelCell.font = font(10, true, 'FF475569');
+    valueCell.font = font(11, i === 2, 'FF0F2540');
+    labelCell.fill = fillSoft;
+    valueCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFFFF' } };
+    labelCell.border = border;
+    valueCell.border = border;
+    labelCell.alignment = { vertical:'middle' };
+    valueCell.alignment = { vertical:'middle', wrapText:true };
+    if(numFmt) valueCell.numFmt = numFmt;
+    rs.getRow(rowNumber).height = 22;
+  });
+  const creditRow = 5 + metrics.length + 1;
+  rs.mergeCells(`A${creditRow}:B${creditRow}`);
+  rs.getCell(`A${creditRow}`).value = '© Unicornio Software® - 2026 · 100 % local · En colaboración con MiPyMe "Visiones"';
+  rs.getCell(`A${creditRow}`).font = font(9, false, 'FF64748B');
+  rs.getCell(`A${creditRow}`).alignment = { vertical:'middle', horizontal:'center' };
+  rs.getRow(creditRow).height = 20;
+  rs.pageSetup.printArea = `A1:B${creditRow}`;
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return bytesToBase64(buffer);
+}
+
+/* ---------- Word profesional: OOXML local con JSZip (sin CDN) ---------- */
+async function buildDocumentBase64(dataRows){
+  const ZipLib = window.JSZip;
+  if(!ZipLib || typeof ZipLib !== 'function') throw new Error('JSZip no disponible');
+  const rows = dataRows || exportRows();
+  const summary = historyTotals(rows);
+  const generated = exportDateLabel(new Date());
+  const esc = value => escapeHtml(String(value));
+  const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+  const para = (text, opts = {}) => {
+    const align = opts.align || 'left';
+    const bold = opts.bold ? '<w:b/>' : '';
+    const color = opts.color || '172233';
+    const size = opts.size || 20;
+    return `<w:p><w:pPr><w:spacing w:before="${opts.before || 0}" w:after="${opts.after || 80}"/><w:jc w:val="${align}"/></w:pPr>` +
+      `<w:r><w:rPr>${bold}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>` +
+      `<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+  };
+  const cell = (text, opts = {}) => {
+    const fill = opts.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${opts.fill}"/>` : '';
+    const bold = opts.bold ? '<w:b/>' : '';
+    const color = opts.color || '172233';
+    const size = opts.size || 16;
+    return `<w:tc><w:tcPr><w:tcW w:w="${opts.w || 1200}" w:type="dxa"/>${fill}<w:vAlign w:val="center"/></w:tcPr>` +
+      `<w:p><w:pPr><w:spacing w:before="20" w:after="20"/><w:jc w:val="${opts.align || 'left'}"/></w:pPr>` +
+      `<w:r><w:rPr>${bold}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>` +
+      `<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p></w:tc>`;
+  };
+  const side = name => `<w:${name} w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>`;
+  const table = (headers, data, widths, aligns) => {
+    const grid = widths.map(w => `<w:gridCol w:w="${w}"/>`).join('');
+    const head = `<w:tr><w:trPr><w:tblHeader/></w:trPr>` +
+      headers.map((h, i) => cell(h, { w:widths[i], fill:'0F2540', color:'FFFFFF', bold:true, align:aligns[i], size:15 })).join('') +
+      '</w:tr>';
+    const body = data.map((row, i) => '<w:tr>' +
+      row.map((v, j) => cell(v, {
+        w:widths[j],
+        fill:i % 2 === 0 ? 'F8FAFC' : undefined,
+        align:aligns[j],
+        bold:j === 4,
+        size:14
+      })).join('') + '</w:tr>').join('');
+    return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/>` +
+      `<w:tblBorders>${side('top')}${side('left')}${side('bottom')}${side('right')}${side('insideH')}${side('insideV')}</w:tblBorders>` +
+      `<w:tblLayout w:type="fixed"/><w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/>` +
+      `</w:tblPr><w:tblGrid>${grid}</w:tblGrid>${head}${body}</w:tbl>`;
+  };
+
+  const cardTable = table(
+    ['REGISTROS', 'TOTAL HISTORIAL', 'BILLETES', 'MONEDA'],
+    [[String(rows.length), summary.total.toFixed(2), String(summary.bills), state.currency.code]],
+    [2200, 2200, 2200, 2200],
+    ['center', 'center', 'center', 'center']
+  );
+  const detailHeaders = ['N.º', 'Fecha', 'Nota', 'Moneda', 'Total', 'Bil.', 'Desglose'];
+  const detailData = rows.map(r => [
+    r.index, r.date, r.note, r.currency, r.total.toFixed(2), r.bills, r.breakdown
+  ]);
+  const detailTable = rows.length
+    ? table(detailHeaders, detailData, [500, 1250, 1850, 750, 1150, 600, 3100],
+      ['center', 'left', 'left', 'center', 'right', 'center', 'left'])
+    : para('El historial está vacío.', { align:'center', color:'64748B' });
+
+  const children = [
+    para('CASHIER DE YUDIRA', { size:36, bold:true, color:'0F2540', align:'center', after:60 }),
+    para(`INFORME DE HISTORIAL · v${APP_VERSION}`, { size:22, bold:true, color:'5B8CFF', align:'center', after:60 }),
+    para(`Generado: ${generated} · Moneda: ${state.currency.code} (${state.currency.symbol})`, { size:16, color:'64748B', align:'center', after:200 }),
+    cardTable,
+    para('DETALLE DE REGISTROS', { size:22, bold:true, color:'0F2540', before:260, after:120 }),
+    detailTable,
+    para('© Unicornio Software® - 2026 · 100 % local · En colaboración con MiPyMe "Visiones"', {
+      size:14, color:'64748B', align:'center', before:240
+    })
+  ];
+
+  const iso = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:document xmlns:w="${W}" xmlns:r="${R}"><w:body>${children.join('')}` +
+    `<w:sectPr><w:footerReference w:type="default" r:id="rId1"/>` +
+    `<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="600" w:bottom="720" w:left="600" w:header="360" w:footer="360" w:gutter="0"/>` +
+    `</w:sectPr></w:body></w:document>`;
+  const footerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:ftr xmlns:w="${W}" xmlns:r="${R}"><w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>` +
+    `<w:r><w:rPr><w:color w:val="64748B"/><w:sz w:val="14"/></w:rPr>` +
+    `<w:t xml:space="preserve">© Unicornio Software® - 2026 · Página </w:t></w:r>` +
+    `<w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:color w:val="64748B"/><w:sz w:val="14"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>` +
+    `</w:p></w:ftr>`;
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr>` +
+    `<w:rFonts w:ascii="Inter" w:hAnsi="Inter"/><w:sz w:val="20"/><w:szCs w:val="20"/>` +
+    `</w:rPr></w:rPrDefault></w:docDefaults>` +
+    `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`;
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
+    `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
+    `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` +
+    `<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>` +
+    `<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>` +
+    `</Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>` +
+    `<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>` +
+    `</Relationships>`;
+  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>` +
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    `</Relationships>`;
+  const coreXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ` +
+    `xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ` +
+    `xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">` +
+    `<dc:title>Informe de historial - Cashier de Yudira</dc:title>` +
+    `<dc:subject>Exportación local del historial de billetes</dc:subject>` +
+    `<dc:creator>Unicornio Software®</dc:creator><cp:lastModifiedBy>Unicornio Software®</cp:lastModifiedBy>` +
+    `<dcterms:created xsi:type="dcterms:W3CDTF">${iso}</dcterms:created>` +
+    `<dcterms:modified xsi:type="dcterms:W3CDTF">${iso}</dcterms:modified>` +
+    `<cp:revision>1</cp:revision></cp:coreProperties>`;
+  const appXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ` +
+    `xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
+    `<Application>Cashier de Yudira</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop>` +
+    `<Company>Unicornio Software®</Company><LinksUpToDate>false</LinksUpToDate>` +
+    `<SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>2.0.2</AppVersion>` +
+    `</Properties>`;
+
+  const zip = new ZipLib();
+  zip.file('[Content_Types].xml', contentTypes);
+  zip.file('_rels/.rels', rootRels);
+  zip.file('word/document.xml', documentXml);
+  zip.file('word/_rels/document.xml.rels', docRels);
+  zip.file('word/styles.xml', stylesXml);
+  zip.file('word/footer1.xml', footerXml);
+  zip.file('docProps/core.xml', coreXml);
+  zip.file('docProps/app.xml', appXml);
+  const bytes = await zip.generateAsync({ type:'uint8array', compression:'DEFLATE', compressionOptions:{ level:6 } });
+  return bytesToBase64(bytes);
+}
+
+/* ---------- PDF profesional ---------- */
+function buildPdfBase64(dataRows){
+  const jspdfLib = window.jspdf || window.jsPDF;
+  const JsPDF = jspdfLib && (jspdfLib.jsPDF || jspdfLib);
+  if(typeof JsPDF !== 'function') throw new Error('PDF no disponible');
+
+  const doc = new JsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const width = pageW - margin * 2;
+  const generated = exportDateLabel(new Date());
+  const rows = dataRows || exportRows();
+  const ink = [23,34,51];
+  const muted = [100,116,139];
+  let y = margin;
+
+  function pageHeader(first){
+    doc.setFillColor(15,37,64);
+    doc.roundedRect(margin, y, width, first ? 26 : 12, 2, 2, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(first ? 17 : 11);
+    doc.text(first ? 'Cashier de Yudira' : 'Cashier de Yudira · Historial', margin + 5, y + (first ? 10 : 8));
+    if(first){
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(9);
+      doc.setTextColor(191,219,254);
+      doc.text(`Informe de historial · v${APP_VERSION} · ${generated}`, margin + 5, y + 18);
+    }
+    y += (first ? 26 : 12) + 6;
+  }
+
+  pageHeader(true);
+
+  const totals = calcTotals();
+  doc.setFillColor(239,246,255);
+  doc.roundedRect(margin, y, width, 24, 2, 2, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...ink);
+  doc.text('RESUMEN', margin + 5, y + 7);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8.5);
+  doc.text(
+    `Registros: ${rows.length}    Moneda: ${state.currency.code}    Total actual: ${state.currency.symbol}${totals.total.toFixed(2)}    Billetes: ${totals.bills}`,
+    margin + 5, y + 15
+  );
+  doc.setTextColor(...muted);
+  doc.text(`Denominaciones activas: ${state.denoms.slice().sort((a,b) => b-a).join(', ')}`, margin + 5, y + 21);
+  y += 30;
+
+  const columns = [
+    { title:'N.º', w:10, align:'center' },
+    { title:'Fecha', w:32 },
+    { title:'Nota', w:42 },
+    { title:'Mon.', w:14, align:'center' },
+    { title:'Total', w:28, align:'right' },
+    { title:'Bil.', w:14, align:'right' },
+    { title:'Desglose', w:42 }
+  ];
+  let cursor = margin;
+  columns.forEach(c => { c.x = cursor; cursor += c.w; });
+
+  function tableHeader(){
+    doc.setFillColor(30,41,59);
+    doc.rect(margin, y, width, 8, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(7.6);
+    doc.setTextColor(255,255,255);
+    columns.forEach(c => {
+      if(c.align === 'right') doc.text(c.title, c.x + c.w - 2, y + 5.2, { align:'right' });
+      else if(c.align === 'center') doc.text(c.title, c.x + c.w / 2, y + 5.2, { align:'center' });
+      else doc.text(c.title, c.x + 1.5, y + 5.2);
+    });
+    y += 8;
+  }
+
+  function newPage(){
+    doc.addPage();
+    y = margin;
+    pageHeader(false);
+    tableHeader();
+  }
+
+  tableHeader();
+
+  if(rows.length === 0){
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...muted);
+    doc.text('El historial está vacío.', pageW / 2, y + 12, { align:'center' });
+  }else{
+    rows.forEach((r, i) => {
+      const noteLines = doc.splitTextToSize(r.note, columns[2].w - 3);
+      const detailLines = doc.splitTextToSize(r.breakdown, columns[6].w - 3);
+      const lineCount = Math.max(noteLines.length, detailLines.length, 1);
+      const rowH = Math.max(7, lineCount * 3.7 + 2.5);
+      if(y + rowH > pageH - margin - 10) newPage();
+
+      if(i % 2 === 0){
+        doc.setFillColor(248,250,252);
+        doc.rect(margin, y, width, rowH, 'F');
+      }
+
+      const textY = y + 4.2;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...ink);
+      doc.text(String(r.index), columns[0].x + columns[0].w / 2, textY, { align:'center' });
+      doc.text(r.date, columns[1].x + 1.5, textY);
+      doc.text(noteLines, columns[2].x + 1.5, textY);
+      doc.text(r.currency, columns[3].x + columns[3].w / 2, textY, { align:'center' });
+      doc.setFont('helvetica','bold');
+      doc.text(r.total.toFixed(2), columns[4].x + columns[4].w - 2, textY, { align:'right' });
+      doc.setFont('helvetica','normal');
+      doc.text(String(r.bills), columns[5].x + columns[5].w - 2, textY, { align:'right' });
+      doc.text(detailLines, columns[6].x + 1.5, textY);
+      y += rowH;
+    });
+  }
+
+  const pages = doc.getNumberOfPages();
+  for(let p=1;p<=pages;p++){
+    doc.setPage(p);
+    doc.setDrawColor(226,232,240);
+    doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...muted);
+    doc.text(`© Unicornio Software® · ${generated}`, margin, pageH - 5);
+    doc.text(`Página ${p} de ${pages}`, pageW - margin, pageH - 5, { align:'right' });
+  }
+
+  return bytesToBase64(doc.output('arraybuffer'));
+}
+
+async function exportData(type, recordRows = null, recordIndex = null){
+  const meta = EXPORT_META[type];
+  if(!meta) return;
+  const options = $$('.export-option, [data-export-record]');
+  options.forEach(b => { b.disabled = true; });
+  const rows = recordRows ? exportRows(recordRows, recordIndex == null ? 0 : recordIndex) : null;
+  try{
+    let base64;
+    if(type === 'xlsx'){
+      base64 = await buildWorkbookBase64(rows);
+    }else if(type === 'docx'){
+      base64 = await buildDocumentBase64(rows);
+    }else{
+      base64 = buildPdfBase64(rows);
+    }
+    const prefix = recordIndex == null
+      ? 'CashierYudira_historial'
+      : `CashierYudira_registro_${recordIndex + 1}`;
+    const filename = `${prefix}_${exportTimestamp()}.${meta.ext}`;
+    await shareOrDownload(base64, filename, meta.mime, meta.label);
+    beep(type === 'xlsx' ? 840 : (type === 'docx' ? 780 : 760), 70);
+  }catch(e){
+    console.error('Error al exportar', e);
+    toast('No se pudo generar el archivo de exportación', 'error');
+  }finally{
+    options.forEach(b => { b.disabled = false; });
+  }
+}
+
 /* Botón Atrás de Android y estilos nativos. */
 function initNativeUI(){
   if(!isNative) return;
@@ -954,6 +1788,9 @@ function initNativeUI(){
   const App = NativePlugins.App;
   if(App && typeof App.addListener === 'function'){
     App.addListener('backButton', ({ canGoBack } = {}) => {
+      if(isSaveFlashOpen()){ return; }
+      if(isHistoryDetailOpen()){ closeHistoryDetail(); return; }
+      if(isExportMenuOpen()){ closeExportMenu(); return; }
       if($('#photoOverlay').classList.contains('show')){ closePhoto(); return; }
       if($('#authorOverlay').classList.contains('show')){ closeAuthor(); return; }
       if(isDrawerOpen()){ closeDrawer(); return; }
@@ -971,8 +1808,7 @@ function initNativeUI(){
 document.addEventListener('DOMContentLoaded', async () => {
   await hydrateStorage();
   initNativeUI();
-  applyTheme(getPreferredTheme());
-  $('#themeToggle').addEventListener('click', toggleTheme);
+  applyTheme();
 
   /* Barra lateral */
   updateDrawerState();
@@ -986,13 +1822,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }));
   $('#sideSave').addEventListener('click', () => { closeDrawer(); $('#btnSaveHistory').click(); });
   $('#sideClear').addEventListener('click', () => { closeDrawer(); $('#btnClearAll').click(); });
-  $('#sideTheme').addEventListener('click', toggleTheme);
-  $('#sideSound').addEventListener('click', () => {
-    const cb = $('#prefSound');
-    cb.checked = !cb.checked;
-    cb.dispatchEvent(new Event('change'));
-    updateDrawerState();
-  });
   $('#sidePrefs').addEventListener('click', () => { activateTab('denoms'); closeDrawer(); });
   $('#sideReplayIntro').addEventListener('click', () => {
     closeDrawer();
@@ -1080,7 +1909,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(ok) clearAllQuantities();
   });
 
+  $('#btnCopyCalc').addEventListener('click', copyCurrentCalc);
   $('#btnSaveHistory').addEventListener('click', saveToHistory);
+
+  /* Un único menú de exportación, compartido por barra, historial y lateral. */
+  ['#btnExportTop', '#btnExport', '#sideExport'].forEach(sel => {
+    const trigger = $(sel);
+    if(trigger) trigger.addEventListener('click', e => {
+      e.stopPropagation();
+      openExportMenu(trigger);
+    });
+  });
+  $$('.export-option').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const recordIdx = exportMenuRecord;
+    const record = recordIdx == null ? null : state.history[recordIdx];
+    closeExportMenu();
+    exportData(b.dataset.export, record ? [record] : null, record == null ? null : recordIdx);
+  }));
+  $('#saveFlashClose').addEventListener('click', closeSaveFlash);
+  $('#exportClose').addEventListener('click', closeExportMenu);
+  $('#exportOverlay').addEventListener('click', e => {
+    if(e.target.id === 'exportOverlay') closeExportMenu();
+  });
+
+  /* Detalle del historial: exportar/copiar/restaurar el registro abierto. */
+  $('#historyDetailClose').addEventListener('click', closeHistoryDetail);
+  $('#historyDetailOverlay').addEventListener('click', e => {
+    if(e.target.id === 'historyDetailOverlay') closeHistoryDetail();
+  });
+  $('#histDetailCopy').addEventListener('click', () => {
+    if(historyDetailIndex != null) copyHistory(historyDetailIndex);
+  });
+  $('#histDetailRestore').addEventListener('click', () => {
+    const idx = historyDetailIndex;
+    closeHistoryDetail();
+    restoreHistory(idx);
+  });
+  const exportThisRecord = type => {
+    const idx = historyDetailIndex;
+    if(idx == null) return;
+    const record = state.history[idx];
+    closeHistoryDetail();
+    exportData(type, [record], idx);
+  };
+  $('#histDetailXlsx').addEventListener('click', () => exportThisRecord('xlsx'));
+  $('#histDetailDocx').addEventListener('click', () => exportThisRecord('docx'));
+  $('#histDetailPdf').addEventListener('click', () => exportThisRecord('pdf'));
 
   $('#btnClearHistory').addEventListener('click', async () => {
     if(state.history.length === 0){ toast('El historial ya está vacío','info'); return; }
@@ -1124,31 +1999,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#prefAutoSave').addEventListener('change', e => { state.prefs.autoSave = e.target.checked; saveState(); });
   $('#prefSound').addEventListener('change', e => { state.prefs.sound = e.target.checked; saveState(); if(e.target.checked) beep(800, 60); });
 
-  $('#winMin').addEventListener('click', () => toast('Minimizar (demo)','info'));
-  $('#winMax').addEventListener('click', () => {
-    const app = document.querySelector('.app');
-    app.style.maxWidth = app.style.maxWidth === '100%' ? '1180px' : '100%';
-  });
   $('#winClose').addEventListener('click', exitApp);
 
   $('#btnScrollTop').addEventListener('click', () => scrollPage(true));
   $('#btnScrollBottom').addEventListener('click', () => scrollPage(false));
 
   document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && isSaveFlashOpen()){ e.preventDefault(); return; }
     if(e.key === 'Escape' && $('#photoOverlay').classList.contains('show')){ e.preventDefault(); closePhoto(); return; }
     if(e.key === 'Escape' && $('#authorOverlay').classList.contains('show')){ e.preventDefault(); closeAuthor(); return; }
+    if(e.key === 'Escape' && isHistoryDetailOpen()){ e.preventDefault(); closeHistoryDetail(); return; }
+    if(e.key === 'Escape' && isExportMenuOpen()){ e.preventDefault(); closeExportMenu(); return; }
     if(e.key === 'Escape' && isDrawerOpen()){ e.preventDefault(); closeDrawer(); return; }
     if(e.ctrlKey && e.key === 's'){ e.preventDefault(); saveToHistory(); }
     if(e.ctrlKey && e.key === 'k'){ e.preventDefault(); $('#searchDenom').focus(); }
-    if(e.ctrlKey && e.shiftKey && e.key === 'L'){ e.preventDefault(); toggleTheme(); }
   });
-
-  const schemeQuery = window.matchMedia('(prefers-color-scheme: light)');
-  const onSchemeChange = e => {
-    if(!localStorage.getItem(THEME_KEY)) applyTheme(e.matches ? 'light' : 'dark');
-  };
-  if(schemeQuery.addEventListener) schemeQuery.addEventListener('change', onSchemeChange);
-  else if(schemeQuery.addListener) schemeQuery.addListener(onSchemeChange);
 
   /* Al abrir la APK (tras pasar la intro) se busca versión nueva en silencio;
      si no hay conexión no se muestra ningún aviso y la app sigue local. */
