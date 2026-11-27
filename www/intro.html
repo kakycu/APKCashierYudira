@@ -69,13 +69,18 @@
   .foto-movil{
     position:relative;width:72%;height:86%;opacity:0;
     transform:translateY(-78vh) scale(1.55);
+    cursor:pointer;touch-action:manipulation;
   }
   /* Envoltorio separado para que el hover no pelee con la animación de caída/respiración. */
   .foto-hover{
     position:absolute;inset:0;display:block;transform:scale(1);transform-origin:center;
     transition:transform .28s cubic-bezier(.2,.8,.2,1);
   }
-  .foto.is-on .foto-movil:hover .foto-hover{transform:scale(1.3)}
+  /* .activo funciona en Android; :hover solo en escritorio para no quedarse pegado al tacto. */
+  .foto.is-on .foto-movil.activo .foto-hover{transform:scale(1.3)}
+  @media (hover:hover){
+    .foto.is-on .foto-movil:hover .foto-hover{transform:scale(1.3)}
+  }
   .foto.is-on .foto-movil{animation:caerYudira 1.75s cubic-bezier(.18,.82,.22,1) both}
   .foto-movil img{
     width:100%;height:100%;object-fit:contain;
@@ -83,8 +88,13 @@
     filter:drop-shadow(0 16px 32px rgba(0,0,0,.55));
     transition:filter .28s ease;
   }
-  .foto.is-on .foto-movil:hover img{
+  .foto.is-on .foto-movil.activo img{
     filter:drop-shadow(0 18px 36px rgba(0,0,0,.6)) drop-shadow(0 0 10px rgba(0,212,255,.4));
+  }
+  @media (hover:hover){
+    .foto.is-on .foto-movil:hover img{
+      filter:drop-shadow(0 18px 36px rgba(0,0,0,.6)) drop-shadow(0 0 10px rgba(0,212,255,.4));
+    }
   }
   .foto.is-on .foto-movil img{animation:respirar 3s ease-in-out 2s infinite}
   .sheen{
@@ -136,6 +146,7 @@
   }
   .credito-texto{display:flex;flex-direction:column;align-items:center;line-height:1.35}
   .credito-texto small{font-size:11px;color:#cbd5e1;opacity:.95}
+  .credito-texto small strong{font-weight:800;color:#fff}
   .credito img{
     width:26px;height:auto;
     filter:brightness(0) invert(1);
@@ -204,7 +215,7 @@
       <img src="anim/02_Unicornio.png" alt="" aria-hidden="true">
       <div class="credito-texto">
         <span>© Unicornio Software® - 2026</span>
-        <small>En colaboración con MiPyMe "Visiones"</small>
+        <small>En colaboración con MiPyMe "<strong>Visiones</strong>"</small>
       </div>
     </div>
   </main>
@@ -217,11 +228,30 @@
     var circulo = document.getElementById('capaCirculo');
     var unicornio = document.getElementById('capaUnicornio');
     var foto = document.getElementById('capaFoto');
+    var fotoMovil = foto.querySelector('.foto-movil');
     var barra = document.getElementById('barraProgreso');
     var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var tactil = window.matchMedia && window.matchMedia('(hover: none)').matches;
+    var hoverTimer = null;
 
     function pintar(paso){ barra.style.width = (paso * 100 / 3) + '%'; }
     function listo(){ intro.classList.add('listos'); pintar(3); }
+
+    /* Android no tiene :hover: el toque activa el mismo efecto durante un instante. */
+    function activarEfectoYudira(){
+      if(!fotoMovil || !foto.classList.contains('is-on')) return;
+      fotoMovil.classList.add('activo');
+      if(hoverTimer) clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(function(){
+        fotoMovil.classList.remove('activo');
+        hoverTimer = null;
+      }, 1000);
+    }
+    if(fotoMovil){
+      ['pointerdown','touchstart','click'].forEach(function(evt){
+        fotoMovil.addEventListener(evt, activarEfectoYudira, { passive:true });
+      });
+    }
 
     document.getElementById('entrarBtn').addEventListener('click', function(){
       try { sessionStorage.setItem('cashier_entered', '1'); } catch(e){}
@@ -247,6 +277,11 @@
       foto.classList.add('brilla');
       unicornio.classList.add('sube');
       listo();
+      /* En pantallas táctiles mostramos el efecto dos veces para que se vea sin tocar. */
+      if(tactil){
+        setTimeout(activarEfectoYudira, 500);
+        setTimeout(activarEfectoYudira, 1850);
+      }
     }, 3560);
   })();
   </script>
