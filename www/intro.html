@@ -142,6 +142,9 @@
   }
   .entrar i{font-size:16px}
   .entrar:hover{filter:brightness(1.08);box-shadow:0 14px 34px rgba(0,168,204,.45)}
+  @media (hover:none){
+    .entrar.activo{filter:brightness(1.12);box-shadow:0 14px 34px rgba(0,168,204,.55);transform:scale(.98)}
+  }
   .entrar:active{transform:scale(.98)}
   .entrar:focus-visible{outline:2px solid #fff;outline-offset:3px}
   .pie{font-size:10.5px;color:var(--muted);opacity:.8}
@@ -216,7 +219,7 @@
     </div>
 
     <button type="button" class="entrar" id="entrarBtn"><i class="fas fa-arrow-right"></i> ENTRAR AL CASHIER DE YUDIRA</button>
-    <p class="pie">Versión 2.0.3 · 100 % local</p>
+    <p class="pie">Versión 2.0.5 · 100 % local</p>
     <div class="credito">
       <img src="anim/02_Unicornio.png" alt="" aria-hidden="true">
       <div class="credito-texto">
@@ -309,6 +312,11 @@
         fotoMovil.addEventListener(evt, activarEfectoYudira, { passive:true });
       });
     }
+    var entrarBtn = document.getElementById('entrarBtn');
+    entrarBtn.addEventListener('pointerdown', function(){
+      entrarBtn.classList.add('activo');
+      setTimeout(function(){ entrarBtn.classList.remove('activo'); }, 420);
+    }, { passive:true });
 
     document.getElementById('entrarBtn').addEventListener('click', function(){
       try { sessionStorage.setItem('cashier_entered', '1'); } catch(e){}

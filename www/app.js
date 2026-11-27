@@ -3,7 +3,7 @@
    ============================================================ */
 const STORAGE_KEY = 'visiones_cashflow_v2';
 const THEME_KEY = 'visiones_theme';
-const APP_VERSION = '2.0.3';
+const APP_VERSION = '2.0.5';
 const APP_NAME = 'ChashierYudira';
 const RELEASES_API = 'https://api.github.com/repos/kakycu/APKCashierYudira/releases/latest';
 const RELEASES_PAGE = 'https://github.com/kakycu/APKCashierYudira/releases';
@@ -42,7 +42,7 @@ function mirrorToNative(key, value){
   nativeCall('Preferences','set',{ key, value: String(value) });
 }
 
-const DEFAULT_DENOMS = [3,5,10,20,50,100,200,500,1000,2000,5000,10000,20000];
+const DEFAULT_DENOMS = [1,3,5,10,20,50,100,200,500,1000,2000,5000,10000,20000];
 
 const COLORS = [
   '#5b8cff','#8b5cf6','#ec4899','#f59e0b','#22c55e','#06b6d4',
@@ -54,27 +54,57 @@ let state = {
   allDenoms: [...DEFAULT_DENOMS],
   quantities: {},
   history: [],
-  prefs: { confetti: true, autoSave: false, sound: true },
+  prefs: { confetti: true, autoSave: false, sound: true, denomOrderAsc: false },
   currency: { code:'CUP', symbol:'$', locale:'es-CU' }
 };
 
 /* ============================================================
-   TEMA: SIEMPRE OSCURO
-   Cualquier valor guardado previamente se sobrescribe al arrancar.
+   TEMA: oscuro por defecto, con opción para cambiar a claro.
    ============================================================ */
-function applyTheme(){
-  document.documentElement.setAttribute('data-theme', 'dark');
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', '#0a0c10');
-  try{ localStorage.setItem(THEME_KEY, 'dark'); }catch(e){}
-  mirrorToNative(THEME_KEY, 'dark');
-  syncStatusBar();
+function getPreferredTheme(){
+  let saved = null;
+  try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+  return saved === 'light' || saved === 'dark' ? saved : 'dark';
 }
 
-async function syncStatusBar(){
+function updateThumbIcon(theme){
+  const thumbIcon = document.getElementById('thumbIcon');
+  if(!thumbIcon) return;
+  thumbIcon.className = 'fas ' + (theme === 'dark' ? 'fa-moon' : 'fa-sun');
+}
+
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', theme === 'light' ? '#e8eef7' : '#0a0c10');
+  try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+  mirrorToNative(THEME_KEY, theme);
+  syncStatusBar(theme);
+  updateThumbIcon(theme);
+  const toggle = document.getElementById('themeToggle');
+  if(toggle) toggle.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
+  const prefTheme = document.getElementById('prefTheme');
+  if(prefTheme) prefTheme.checked = theme === 'light';
+  const prefThemeIcon = document.getElementById('prefThemeIcon');
+  if(prefThemeIcon) prefThemeIcon.className = 'fas ' + (theme === 'dark' ? 'fa-moon' : 'fa-sun');
+  const prefThemeLabel = document.getElementById('prefThemeLabel');
+  if(prefThemeLabel) prefThemeLabel.textContent = theme === 'dark' ? 'Tema oscuro' : 'Tema claro';
+  const prefThemeHint = document.getElementById('prefThemeHint');
+  if(prefThemeHint) prefThemeHint.textContent = theme === 'dark' ? 'Pulsa para cambiar al tema claro' : 'Pulsa para cambiar al tema oscuro';
+}
+
+async function syncStatusBar(theme){
   if(!isNative) return;
-  await nativeCall('StatusBar','setStyle',{ style:'LIGHT' });
-  await nativeCall('StatusBar','setBackgroundColor',{ color:'#0a0c10' });
+  await nativeCall('StatusBar','setStyle',{ style: theme === 'light' ? 'DARK' : 'LIGHT' });
+  await nativeCall('StatusBar','setBackgroundColor',{ color: theme === 'light' ? '#e8eef7' : '#0a0c10' });
+}
+
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  toast(next === 'light' ? 'Tema claro activado ☀️' : 'Tema oscuro activado 🌙', 'info');
+  beep(next === 'light' ? 900 : 500, 50);
 }
 
 /* ============================================================
@@ -108,6 +138,11 @@ function loadState(){
     if(Array.isArray(data.history)) state.history = data.history;
     if(data.prefs && typeof data.prefs === 'object') state.prefs = { ...state.prefs, ...data.prefs };
     if(data.currency && data.currency.code) state.currency = data.currency;
+    /* Migración: el billete de $1.00 pasa a ser una denominación fija del programa. */
+    if(!state.allDenoms.includes(1)) state.allDenoms.push(1);
+    if(!state.denoms.includes(1)) state.denoms.push(1);
+    state.denoms = sortDenoms(state.denoms);
+    state.allDenoms = sortDenoms(state.allDenoms);
   }catch(e){ console.warn('Load error', e); }
 }
 
@@ -116,6 +151,117 @@ function loadState(){
    ============================================================ */
 const $ = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
+
+/* Tooltips propios: reemplazan al title nativo (que no se puede estilizar)
+   y funcionan con ratón, teclado y toque en la APK. */
+function initTooltips(){
+  const tip = document.createElement('div');
+  tip.id = 'appTooltip';
+  tip.className = 'app-tooltip';
+  tip.setAttribute('role', 'tooltip');
+  document.body.appendChild(tip);
+
+  let showTimer = null;
+  let hideTimer = null;
+  let current = null;
+  let lastPointerAt = 0;
+  const selector = '[title],[data-tooltip]';
+
+  function preparar(el){
+    if(!el || !el.closest) return null;
+    el = el.closest(selector);
+    if(!el) return null;
+    if(!el.dataset.tooltip){
+      const title = (el.getAttribute('title') || '').trim();
+      if(!title) return null;
+      el.dataset.tooltip = title;
+      if(!el.hasAttribute('aria-label')) el.setAttribute('aria-label', title);
+      el.removeAttribute('title');
+    }
+    return el.dataset.tooltip ? el : null;
+  }
+
+  function ocultar(){
+    clearTimeout(showTimer);
+    delete tip.dataset.visible;
+    current = null;
+  }
+
+  function position(el){
+    const r = el.getBoundingClientRect();
+    const t = tip.getBoundingClientRect();
+    const gap = 10;
+    let left = r.left + r.width / 2 - t.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - t.width - 8));
+    let top = r.top - t.height - gap;
+    tip.dataset.side = top < 8 ? 'bottom' : 'top';
+    if(top < 8) top = r.bottom + gap;
+    tip.style.left = Math.round(left) + 'px';
+    tip.style.top = Math.round(top) + 'px';
+  }
+
+  function mostrar(el, tactil){
+    el = preparar(el);
+    if(!el) return;
+    clearTimeout(hideTimer);
+    clearTimeout(showTimer);
+    current = el;
+    tip.textContent = el.dataset.tooltip;
+    tip.dataset.visible = '1';
+    requestAnimationFrame(() => position(el));
+    if(tactil) hideTimer = setTimeout(ocultar, 1100);
+  }
+
+  document.addEventListener('pointerover', e => {
+    if(e.pointerType === 'touch' || e.pointerType === 'pen') return;
+    const el = preparar(e.target);
+    if(!el || (current === el && tip.dataset.visible === '1')) return;
+    clearTimeout(hideTimer);
+    showTimer = setTimeout(() => mostrar(el, false), 80);
+  });
+
+  document.addEventListener('pointerout', e => {
+    if(e.pointerType === 'touch' || e.pointerType === 'pen') return;
+    const el = preparar(e.target);
+    if(el && e.relatedTarget && el.contains(e.relatedTarget)) return;
+    ocultar();
+  });
+
+  document.addEventListener('focusin', e => {
+    if(Date.now() - lastPointerAt < 300) return;
+    const el = preparar(e.target);
+    if(el) mostrar(el, false);
+    else ocultar();
+  });
+
+  document.addEventListener('focusout', e => {
+    const el = preparar(e.target);
+    if(el && e.relatedTarget && el.contains(e.relatedTarget)) return;
+    ocultar();
+  });
+
+  document.addEventListener('pointerdown', e => {
+    lastPointerAt = Date.now();
+    if(e.pointerType === 'mouse') return;
+    const el = preparar(e.target);
+    if(el) mostrar(el, true);
+    else ocultar();
+  }, { passive:true });
+
+  window.addEventListener('scroll', ocultar, { passive:true, capture:true });
+  window.addEventListener('resize', ocultar);
+
+  /* Convierte los títulos iniciales y los que añade el render dinámico. */
+  const observar = new MutationObserver(registros => {
+    registros.forEach(reg => reg.addedNodes.forEach(n => {
+      if(n.nodeType !== 1) return;
+      if(n.matches && n.matches(selector)) preparar(n);
+      if(n.querySelectorAll) n.querySelectorAll(selector).forEach(preparar);
+    }));
+  });
+  $$('[title]').forEach(preparar);
+  observar.observe(document.body, { childList:true, subtree:true });
+}
 
 function fmtMoney(n){
   try{
@@ -126,6 +272,70 @@ function fmtMoney(n){
   }catch(e){
     return Number(n).toFixed(2);
   }
+}
+
+/* ============================================================
+   IMPORTE EN LETRAS — para comprobantes, exportaciones y copia.
+   ============================================================ */
+const LETRAS_UNIDADES = ['cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+const LETRAS_DECENAS = ['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+const LETRAS_CENTENAS = ['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+const NOMBRES_MONEDA = {
+  CUP: { singular:'peso cubano', plural:'pesos cubanos', centSingular:'centavo', centPlural:'centavos' },
+  USD: { singular:'dólar', plural:'dólares', centSingular:'centavo', centPlural:'centavos' },
+  EUR: { singular:'euro', plural:'euros', centSingular:'céntimo', centPlural:'céntimos' },
+  MXN: { singular:'peso mexicano', plural:'pesos mexicanos', centSingular:'centavo', centPlural:'centavos' }
+};
+
+function centenasEnLetras(n){
+  if(n <= 0) return '';
+  if(n === 100) return 'cien';
+  let out = '';
+  const c = Math.floor(n / 100);
+  const r = n % 100;
+  if(c) out += LETRAS_CENTENAS[c];
+  if(r){
+    if(out) out += ' ';
+    if(r <= 29){
+      out += LETRAS_UNIDADES[r];
+    }else{
+      const d = Math.floor(r / 10);
+      const u = r % 10;
+      out += LETRAS_DECENAS[d];
+      if(u) out += ' y ' + LETRAS_UNIDADES[u];
+    }
+  }
+  return out;
+}
+
+function apocopeUno(texto){
+  return texto.replace(/veintiuno$/, 'veintiún').replace(/uno$/, 'un');
+}
+
+function enteroEnLetras(n){
+  if(n === 0) return 'cero';
+  const partes = [];
+  const billones = Math.floor(n / 1000000000000);
+  const millones = Math.floor((n % 1000000000000) / 1000000);
+  const miles = Math.floor((n % 1000000) / 1000);
+  const resto = n % 1000;
+  if(billones) partes.push(billones === 1 ? 'un billón' : apocopeUno(enteroEnLetras(billones)) + ' billones');
+  if(millones) partes.push(millones === 1 ? 'un millón' : apocopeUno(enteroEnLetras(millones)) + ' millones');
+  if(miles) partes.push(miles === 1 ? 'mil' : apocopeUno(centenasEnLetras(miles)) + ' mil');
+  if(resto) partes.push(centenasEnLetras(resto));
+  return partes.join(' ');
+}
+
+function importeEnLetras(amount, code = state.currency.code){
+  const num = Math.abs(Number(amount) || 0);
+  const totalCent = Math.round(num * 100);
+  const entero = Math.floor(totalCent / 100);
+  const centavos = totalCent % 100;
+  const cur = NOMBRES_MONEDA[code] || { singular:'peso', plural:'pesos', centSingular:'centavo', centPlural:'centavos' };
+  const letras = apocopeUno(enteroEnLetras(entero)).toUpperCase();
+  const nombre = (entero === 1 ? cur.singular : cur.plural).toUpperCase();
+  const centNombre = (centavos === 1 ? cur.centSingular : cur.centPlural).toUpperCase();
+  return `${letras} ${nombre} CON ${String(centavos).padStart(2, '0')}/100 ${centNombre}`;
 }
 
 function pad2(n){ return String(n).padStart(2, '0'); }
@@ -162,6 +372,41 @@ function iconForDenom(denom){
   if(denom >= 200) return 'fa-money-bill-1';
   if(denom >= 50) return 'fa-money-bill';
   return 'fa-money-check';
+}
+
+/* Orden configurable de las denominaciones (ascendente o descendente). */
+function sortDenoms(list){
+  return [...list].sort((a,b)=> state.prefs.denomOrderAsc ? a-b : b-a);
+}
+
+/* Imágenes locales de billetes cubanos para la marca de agua de cada tarjeta. */
+const BILL_IMAGES = {
+  1: 'billetes/_alt-1.jpg',
+  3: 'billetes/_alt-3.jpg',
+  5: 'billetes/_alt-5.jpg',
+  10: 'billetes/_alt-10.jpg',
+  20: 'billetes/_alt-20.jpg',
+  50: 'billetes/_alt-50.jpg',
+  100: 'billetes/_alt-100.jpg',
+  200: 'billetes/_alt-200.jpg',
+  500: 'billetes/_alt-500.jpg',
+  1000: 'billetes/_alt-1000.jpg',
+  2000: 'billetes/_alt-2000.jpg',
+  5000: 'billetes/_alt-5000.jpg',
+  10000: 'billetes/_alt-10000.jpg',
+  20000: 'billetes/_alt-20000.jpg'
+};
+
+/* Devuelve el atributo style con la imagen de fondo, solo para pesos cubanos. */
+function billWatermarkAttr(denom){
+  if(state.currency.code !== 'CUP') return '';
+  const src = BILL_IMAGES[denom];
+  return src ? ` style="--bill-wm:url('${src}')"` : '';
+}
+
+/* Imagen del billete para el visor ampliado (solo pesos cubanos). */
+function billImageFor(denom){
+  return state.currency.code === 'CUP' ? (BILL_IMAGES[denom] || '') : '';
 }
 
 function calcTotals(){
@@ -220,8 +465,9 @@ function toast(msg, type = 'info'){
 function confettiBurst(){
   if(!state.prefs.confetti) return;
   const colors = ['#5b8cff','#8b5cf6','#22c55e','#f59e0b','#ec4899','#06b6d4','#ffffff'];
-  const trigger = $('#btnSaveHistory');
-  const rect = trigger && trigger.getBoundingClientRect ? trigger.getBoundingClientRect() : null;
+  /* El estallido nace del centro de la app (o de la pantalla si aún no hay contenedor). */
+  const app = $('.app');
+  const rect = app && app.getBoundingClientRect ? app.getBoundingClientRect() : null;
   const originX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
   const originY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
   const n = 58;
@@ -232,7 +478,7 @@ function confettiBurst(){
     p.style.cssText = `
       position:fixed;left:${originX}px;top:${originY}px;width:${size}px;height:${size}px;
       background:${glow};border-radius:${Math.random()>.5?'50%':'3px'};
-      box-shadow:0 0 14px ${glow};pointer-events:none;z-index:100000;
+      box-shadow:0 0 14px ${glow};pointer-events:none;z-index:100003;
       transform:translate(-50%,-50%);
     `;
     document.body.appendChild(p);
@@ -257,10 +503,12 @@ function closeSaveFlash(){
   const overlay = $('#saveFlashOverlay');
   if(overlay) overlay.classList.remove('show');
 }
-function saveFlash(amountText){
+function saveFlash(amountText, words = ''){
   const amount = $('#saveFlashAmount');
   if(!amount) return;
   amount.textContent = `${amountText} · en el historial`;
+  const wordsEl = $('#saveFlashWords');
+  if(wordsEl) wordsEl.textContent = words;
   const overlay = $('#saveFlashOverlay');
   overlay.classList.add('show');
   const closeBtn = $('#saveFlashClose');
@@ -284,7 +532,7 @@ function syncDenomFilterClear(){
 function renderBills(filter = ''){
   const grid = $('#billsGrid');
   const f = filter.trim().toLowerCase();
-  const activeDenoms = [...state.denoms].sort((a,b)=>b-a);
+  const activeDenoms = sortDenoms(state.denoms);
 
   const visible = activeDenoms.filter(d => {
     if(!f) return true;
@@ -294,7 +542,7 @@ function renderBills(filter = ''){
   if(visible.length === 0){
     grid.innerHTML = `<div class="empty-grid">
       <i class="fas fa-money-bill-slash"></i>
-      <p>${f ? 'Sin coincidencias para "'+escapeHtml(filter)+'"' : 'No hay denominaciones activas. Agrega una en la pestaña "Denominaciones".'}</p>
+      <p>${f ? 'Sin coincidencias para "'+escapeHtml(filter)+'"' : 'No hay denominaciones activas. Agrega una en la pestaña "Denomin.".'}</p>
     </div>`;
     return;
   }
@@ -305,17 +553,21 @@ function renderBills(filter = ''){
     const color = colorForDenom(d);
     const icon = iconForDenom(d);
     const code = state.currency.code;
+    const billImg = billImageFor(d);
     return `
-      <div class="bill-card" data-denom="${d}">
+      <div class="bill-card" data-denom="${d}"${billWatermarkAttr(d)}>
         <div class="bill-top">
           <div class="bill-icon" style="background:linear-gradient(135deg,${color},${color}aa)">
             <i class="fas ${icon}"></i>
           </div>
-          <button class="bill-remove" data-remove="${d}" title="Quitar denominación" aria-label="Quitar denominación ${d}">
-            <i class="fas fa-xmark"></i>
-          </button>
+          <div class="bill-actions">
+            ${billImg ? `<button class="bill-zoom" data-billview="${d}" title="Ver billete completo" aria-label="Ver imagen del billete de ${d} ${code}"><i class="fas fa-magnifying-glass-plus"></i></button>` : ''}
+            <button class="bill-remove" data-remove="${d}" title="Quitar denominación" aria-label="Quitar denominación ${d}">
+              <i class="fas fa-xmark"></i>
+            </button>
+          </div>
         </div>
-        <div class="bill-denom">${state.currency.symbol}${d.toLocaleString('es-MX')} <small>${code}</small></div>
+        <div class="bill-denom${billImg ? ' bill-denom-view' : ''}"${billImg ? ` data-billview="${d}" role="button" tabindex="0" aria-label="Ver imagen del billete de ${d} ${code}"` : ''}>${state.currency.symbol}${d.toLocaleString('es-MX')} <small>${code}</small></div>
         <div class="qty-control">
           <button class="qty-btn" data-dec="${d}" aria-label="Restar ${d}"><i class="fas fa-minus"></i></button>
           <input class="qty-input" type="number" min="0" step="1" value="${qty}" data-qty="${d}" aria-label="Cantidad de billetes de ${d}">
@@ -423,6 +675,10 @@ function refreshTotals(){
 
   /* El total aparece dos veces: arriba de la calculadora y en el panel final. */
   ['#totalValue', '#totalValueTop'].forEach(id => { const el = $(id); if(el) el.textContent = formatted; });
+  ['#totalWords', '#totalWordsTop'].forEach(id => {
+    const el = $(id);
+    if(el) el.textContent = importeEnLetras(total);
+  });
   ['#billCountLabel', '#billCountLabelTop'].forEach(id => { const el = $(id); if(el) el.textContent = countText; });
   ['#totalAmount', '#totalAmountTop'].forEach(id => {
     const el = $(id);
@@ -433,6 +689,7 @@ function refreshTotals(){
   });
 
   $('#statCurrent').textContent = state.currency.symbol + fmtMoney(total);
+  $('#statCurrentWords').textContent = importeEnLetras(total);
   $('#statBills').textContent = bills;
 }
 
@@ -471,6 +728,8 @@ function historyClipboardText(h){
     '--------------------------',
     'Total:',
     `${sym}${fmtMoney(h.total)} ${code}`,
+    'Importe en letras:',
+    importeEnLetras(h.total, code),
     'Repartidos en:',
     `${bills} billetes`,
     'Desglose:',
@@ -510,6 +769,7 @@ function renderHistory(filter = ''){
         <div class="history-idx">#${h._idx + 1}</div>
         <div class="history-body">
           <div class="history-total">${sym}${fmtMoney(h.total)} <span class="hcur">${curCode}</span></div>
+          <div class="history-words">${importeEnLetras(h.total, curCode)}</div>
           <div class="history-meta">
             <span><i class="fas fa-layer-group"></i> ${h.bills} billetes</span>
             <span><i class="fas fa-calendar"></i> ${ds} ${ts}</span>
@@ -579,6 +839,7 @@ function openHistoryDetail(idx){
   $('#historyDetailDate').textContent = `${ds} ${ts}`;
   $('#historyDetailBody').innerHTML = `
     <div class="detail-total"><strong>${sym}${fmtMoney(h.total)}</strong><span>${code}</span></div>
+    <div class="detail-words"><small>Importe en letras</small><strong>${importeEnLetras(h.total, code)}</strong></div>
     <div class="detail-grid">
       <div class="detail-cell"><small>Billetes</small><strong>${h.bills}</strong></div>
       <div class="detail-cell"><small>Fecha</small><strong>${ds} ${ts}</strong></div>
@@ -595,7 +856,7 @@ function openHistoryDetail(idx){
    ============================================================ */
 function renderDenomList(){
   const list = $('#denomList');
-  const all = [...new Set([...state.allDenoms, ...state.denoms])].sort((a,b)=>b-a);
+  const all = sortDenoms([...new Set([...state.allDenoms, ...state.denoms])]);
 
   list.innerHTML = all.map(d => {
     const active = state.denoms.includes(d);
@@ -623,7 +884,7 @@ function renderDenomList(){
       if(inp.checked){
         if(!state.denoms.includes(d)){
           state.denoms.push(d);
-          state.denoms.sort((a,b)=>b-a);
+          state.denoms = sortDenoms(state.denoms);
         }
       }else{
         state.denoms = state.denoms.filter(x => x !== d);
@@ -665,12 +926,60 @@ function renderDenomList(){
   });
 }
 
+/* ---------- Acciones rápidas de denominaciones activas ---------- */
+function afterDenomsChanged(msg){
+  saveState();
+  renderBills($('#searchDenom').value);
+  renderDenomList();
+  refreshTotals();
+  renderStats();
+  if(msg) toast(msg, 'info');
+}
+
+function resetDenoms(){
+  confirmModal(
+    'Restablecer denominaciones',
+    '¿Volver a las originales? Se borrarán las personalizadas y sus cantidades; el historial no se toca.'
+  ).then(ok => {
+    if(!ok) return;
+    const originales = new Set(DEFAULT_DENOMS);
+    state.allDenoms = sortDenoms([...DEFAULT_DENOMS]);
+    state.denoms = sortDenoms([...DEFAULT_DENOMS]);
+    for(const k of Object.keys(state.quantities)) if(!originales.has(Number(k))) delete state.quantities[k];
+    afterDenomsChanged('Denominaciones restablecidas');
+    beep(880, 70);
+  });
+}
+
+function activateAllDenoms(){
+  const todas = [...new Set([...state.allDenoms, ...state.denoms, ...DEFAULT_DENOMS])];
+  if(state.denoms.length === todas.length){ toast('Todas las denominaciones ya están activas', 'info'); return; }
+  state.denoms = sortDenoms(todas);
+  afterDenomsChanged('Todas las denominaciones activadas');
+  beep(800, 60);
+}
+
+function deactivateAllDenoms(){
+  if(state.denoms.length === 0){ toast('Ya no hay denominaciones activas', 'info'); return; }
+  confirmModal(
+    'Desactivar todas',
+    '¿Desactivar todas las denominaciones? Las cantidades se pondrán en cero; el historial no se toca.'
+  ).then(ok => {
+    if(!ok) return;
+    state.denoms = [];
+    state.quantities = {};
+    afterDenomsChanged('Todas las denominaciones desactivadas');
+    beep(480, 60);
+  });
+}
+
 /* ============================================================
    STATS
    ============================================================ */
 function renderStats(){
   const { total, bills } = calcTotals();
   $('#statCurrent').textContent = state.currency.symbol + fmtMoney(total);
+  $('#statCurrentWords').textContent = importeEnLetras(total);
   $('#statBills').textContent = bills;
   $('#statHistory').textContent = state.history.length;
 
@@ -680,7 +989,7 @@ function renderStats(){
   $('#statAvg').textContent = state.currency.symbol + fmtMoney(avg);
 
   const breakdown = $('#statsBreakdown');
-  const active = [...state.denoms].sort((a,b)=>b-a);
+  const active = sortDenoms(state.denoms);
   const rows = active.map(d => {
     const q = state.quantities[d] || 0;
     const sub = q*d;
@@ -758,7 +1067,7 @@ async function saveToHistory(){
   renderHistory($('#searchHistory').value);
   renderStats();
   confettiBurst();
-  saveFlash(`${state.currency.symbol}${fmtMoney(total)} ${state.currency.code}`);
+  saveFlash(`${state.currency.symbol}${fmtMoney(total)} ${state.currency.code}`, importeEnLetras(total));
   beep(900, 120);
   toast('Registro guardado en historial ✓', 'success');
 }
@@ -771,7 +1080,7 @@ function restoreHistory(idx){
     if(!state.denoms.includes(n)) state.denoms.push(n);
     state.quantities[n] = h.snapshot[d];
   });
-  state.denoms.sort((a,b)=>b-a);
+  state.denoms = sortDenoms(state.denoms);
   saveState();
   renderBills($('#searchDenom').value);
   renderDenomList();
@@ -885,7 +1194,7 @@ function applyCurrencyOption(option){
 /* ============================================================
    TABS
    ============================================================ */
-function activateTab(name){
+function activateTab(name, reveal = false){
   $$('.tab').forEach(t => {
     const active = t.dataset.tab === name;
     t.classList.toggle('active', active);
@@ -896,6 +1205,10 @@ function activateTab(name){
   if(name === 'stats') renderStats();
   if(name === 'history') renderHistory($('#searchHistory').value);
   if(name === 'denoms') renderDenomList();
+  if(reveal){
+    const tab = document.querySelector('.tab[data-tab="' + name + '"]');
+    if(tab) requestAnimationFrame(() => tab.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'start' }));
+  }
 }
 
 /* ============================================================
@@ -982,7 +1295,7 @@ function updateDrawerState(){
   if(badge) badge.textContent = state.history.length;
   const version = $('#sideVersion');
   if(version && version.textContent === '…') return;
-  if(version) version.textContent = 'v' + APP_VERSION;
+  if(version) version.textContent = 'V' + APP_VERSION;
 }
 function openAuthor(){
   closeDrawer();
@@ -998,6 +1311,25 @@ function openPhoto(){
 }
 function closePhoto(){
   $('#photoOverlay').classList.remove('show');
+}
+
+/* Visor del billete completo: se abre al tocar el título de una tarjeta. */
+function openBillView(denom){
+  const src = billImageFor(denom);
+  if(!src) return;
+  const img = $('#billImage');
+  const overlay = $('#billOverlay');
+  if(!img || !overlay) return;
+  img.src = src;
+  img.alt = `Billete de ${denom.toLocaleString('es-MX')} ${state.currency.code}`;
+  const cap = $('#billCaption');
+  if(cap) cap.textContent = `Denominación Seleccionada: ${state.currency.symbol} ${denom.toFixed(2)} ${state.currency.code}`;
+  overlay.classList.add('show');
+  beep(820, 40);
+}
+function closeBillView(){
+  const overlay = $('#billOverlay');
+  if(overlay) overlay.classList.remove('show');
 }
 
 /* Los botones flotantes buscan el contenedor que realmente hace scroll:
@@ -1068,18 +1400,18 @@ async function checkForUpdates(opts){
     const latest = String(rel.tag_name || APP_VERSION);
     const apk = (rel.assets || []).find(a => /\.apk$/i.test(a.name || ''));
     updateAssetUrl = (apk && apk.browser_download_url) || rel.html_url || RELEASES_PAGE;
-    if(label) label.textContent = latest;
+    if(label) label.textContent = (latest === 'v' + APP_VERSION || latest === 'V' + APP_VERSION) ? 'V' + APP_VERSION : latest;
 
     if(compareVersions(latest, APP_VERSION) > 0){
-      $('#updateTitle').textContent = `Versión ${latest} disponible`;
-      $('#updateMsg').textContent = `Tienes la versión ${APP_VERSION}. Se abrirá GitHub para descargar el APK actualizado.`;
+      $('#updateTitle').textContent = `Versión ${latest.replace(/^v/i,'V')} disponible`;
+      $('#updateMsg').textContent = `Tienes la versión V${APP_VERSION}. Se abrirá GitHub para descargar el APK actualizado.`;
       $('#updateOverlay').classList.add('show');
     }else if(!auto){
-      toast(`Ya tienes la versión más reciente (${APP_VERSION})`, 'success');
+      toast(`Ya tienes la versión más reciente (V${APP_VERSION})`, 'success');
     }
   }catch(e){
     if(!auto){
-      if(label) label.textContent = 'v' + APP_VERSION;
+      if(label) label.textContent = 'V' + APP_VERSION;
       toast('Sin conexión: no se pudo buscar actualizaciones', 'error');
     }
   }finally{
@@ -1398,6 +1730,7 @@ async function buildWorkbookBase64(dataRows){
   paint(`A${totalRow}:G${totalRow}`, { fill:fillLight, border, alignment:{ vertical:'middle' } });
   ws.mergeCells(`A${totalRow}:D${totalRow}`);
   const tr = ws.getRow(totalRow);
+
   tr.getCell(1).value = 'TOTAL DE REGISTROS';
   tr.getCell(1).font = font(10, true, 'FF0F2540');
   tr.getCell(5).value = rows.length
@@ -1414,7 +1747,14 @@ async function buildWorkbookBase64(dataRows){
   tr.getCell(6).alignment = { vertical:'middle', horizontal:'center' };
   tr.height = 26;
 
-  const noteRow = totalRow + 2;
+  const wordsRow = totalRow + 1;
+  paint(`A${wordsRow}:G${wordsRow}`, { fill:fillSoft, border, alignment:{ vertical:'middle', horizontal:'left', wrapText:true } });
+  ws.mergeCells(`A${wordsRow}:G${wordsRow}`);
+  ws.getCell(`A${wordsRow}`).value = `IMPORTE EN LETRAS: ${importeEnLetras(summary.total, state.currency.code)}`;
+  ws.getCell(`A${wordsRow}`).font = font(10, true, 'FF0F2540');
+  ws.getRow(wordsRow).height = 30;
+
+  const noteRow = totalRow + 3;
   paint(`A${noteRow}:G${noteRow}`, { alignment:{ vertical:'middle', horizontal:'center' } });
   ws.mergeCells(`A${noteRow}:G${noteRow}`);
   ws.getCell(`A${noteRow}`).value = '© Unicornio Software® - 2026 · 100 % local · En colaboración con MiPyMe "Visiones"';
@@ -1458,11 +1798,12 @@ async function buildWorkbookBase64(dataRows){
     ['Generado', generated, null],
     ['Registros guardados', rows.length, '0'],
     ['Total del historial', summary.total, '#,##0.00'],
+    ['Total del historial en letras', importeEnLetras(summary.total, state.currency.code), null],
     ['Billetes del historial', summary.bills, '0'],
     ['Moneda actual', `${state.currency.code} (${state.currency.symbol})`, null],
     ['Total actual', calcTotals().total, '#,##0.00'],
     ['Billetes actuales', calcTotals().bills, '0'],
-    ['Denominaciones activas', state.denoms.slice().sort((a,b) => b-a).join(', '), null]
+    ['Denominaciones activas', sortDenoms(state.denoms).join(', '), null]
   ];
   metrics.forEach(([label, value, numFmt], i) => {
     const rowNumber = 5 + i;
@@ -1563,6 +1904,9 @@ async function buildDocumentBase64(dataRows){
     para(`INFORME DE HISTORIAL · v${APP_VERSION}`, { size:22, bold:true, color:'5B8CFF', align:'center', after:60 }),
     para(`Generado: ${generated} · Moneda: ${state.currency.code} (${state.currency.symbol})`, { size:16, color:'64748B', align:'center', after:200 }),
     cardTable,
+    para(`IMPORTE EN LETRAS: ${importeEnLetras(summary.total, state.currency.code)}`, {
+      size:16, bold:true, color:'0F2540', before:120, after:60
+    }),
     para('DETALLE DE REGISTROS', { size:22, bold:true, color:'0F2540', before:260, after:120 }),
     detailTable,
     para('© Unicornio Software® - 2026 · 100 % local · En colaboración con MiPyMe "Visiones"', {
@@ -1623,7 +1967,7 @@ async function buildDocumentBase64(dataRows){
     `xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
     `<Application>Cashier de Yudira</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop>` +
     `<Company>Unicornio Software®</Company><LinksUpToDate>false</LinksUpToDate>` +
-    `<SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>2.0.3</AppVersion>` +
+    `<SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>2.0.5</AppVersion>` +
     `</Properties>`;
 
   const zip = new ZipLib();
@@ -1675,8 +2019,12 @@ function buildPdfBase64(dataRows){
   pageHeader(true);
 
   const totals = calcTotals();
+  const wordsLines = doc.splitTextToSize(
+    `Total en letras: ${importeEnLetras(totals.total, state.currency.code)}`, width - 10
+  );
+  const summaryH = 24 + Math.max(0, wordsLines.length - 1) * 3.5;
   doc.setFillColor(239,246,255);
-  doc.roundedRect(margin, y, width, 24, 2, 2, 'F');
+  doc.roundedRect(margin, y, width, summaryH, 2, 2, 'F');
   doc.setFont('helvetica','bold');
   doc.setFontSize(9);
   doc.setTextColor(...ink);
@@ -1687,9 +2035,14 @@ function buildPdfBase64(dataRows){
     `Registros: ${rows.length}    Moneda: ${state.currency.code}    Total actual: ${state.currency.symbol}${totals.total.toFixed(2)}    Billetes: ${totals.bills}`,
     margin + 5, y + 15
   );
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.text(wordsLines, margin + 5, y + 21);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8.5);
   doc.setTextColor(...muted);
-  doc.text(`Denominaciones activas: ${state.denoms.slice().sort((a,b) => b-a).join(', ')}`, margin + 5, y + 21);
-  y += 30;
+  doc.text(`Denominaciones activas: ${sortDenoms(state.denoms).join(', ')}`, margin + 5, y + 21 + wordsLines.length * 3.5);
+  y += summaryH + 6;
 
   const columns = [
     { title:'N.º', w:10, align:'center' },
@@ -1824,6 +2177,7 @@ function initNativeUI(){
       if(isSaveFlashOpen()){ return; }
       if(isHistoryDetailOpen()){ closeHistoryDetail(); return; }
       if(isExportMenuOpen()){ closeExportMenu(); return; }
+      if($('#billOverlay').classList.contains('show')){ closeBillView(); return; }
       if($('#photoOverlay').classList.contains('show')){ closePhoto(); return; }
       if($('#authorOverlay').classList.contains('show')){ closeAuthor(); return; }
       if(isDrawerOpen()){ closeDrawer(); return; }
@@ -1841,7 +2195,14 @@ function initNativeUI(){
 document.addEventListener('DOMContentLoaded', async () => {
   await hydrateStorage();
   initNativeUI();
-  applyTheme();
+  initTooltips();
+  applyTheme(getPreferredTheme());
+  const themeToggle = $('#themeToggle');
+  if(themeToggle) themeToggle.addEventListener('click', toggleTheme);
+  const prefThemeToggle = $('#prefTheme');
+  if(prefThemeToggle) prefThemeToggle.addEventListener('change', () => {
+    if((document.documentElement.getAttribute('data-theme') === 'light') !== prefThemeToggle.checked) toggleTheme();
+  });
 
   /* Barra lateral */
   updateDrawerState();
@@ -1849,13 +2210,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#drawerClose').addEventListener('click', closeDrawer);
   $('#drawerOverlay').addEventListener('click', closeDrawer);
   $$('.side-link[data-gototab]').forEach(b => b.addEventListener('click', () => {
-    activateTab(b.dataset.gototab);
+    activateTab(b.dataset.gototab, true);
     closeDrawer();
     beep(650, 30);
   }));
   $('#sideSave').addEventListener('click', () => { closeDrawer(); $('#btnSaveHistory').click(); });
   $('#sideClear').addEventListener('click', () => { closeDrawer(); $('#btnClearAll').click(); });
-  $('#sidePrefs').addEventListener('click', () => { activateTab('denoms'); closeDrawer(); });
   $('#sideReplayIntro').addEventListener('click', () => {
     closeDrawer();
     saveState();
@@ -1871,6 +2231,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#photoClose').addEventListener('click', closePhoto);
   $('#photoOk').addEventListener('click', closePhoto);
   $('#photoOverlay').addEventListener('click', e => { if(e.target.id === 'photoOverlay') closePhoto(); });
+  $('#billClose').addEventListener('click', closeBillView);
+  $('#billOk').addEventListener('click', closeBillView);
+  $('#billOverlay').addEventListener('click', e => { if(e.target.id === 'billOverlay') closeBillView(); });
+  /* Tocar el título de una tarjeta abre la imagen completa del billete. */
+  $('#billsGrid').addEventListener('click', e => {
+    const target = e.target.closest('[data-billview]');
+    if(target) openBillView(Number(target.dataset.billview));
+  });
+  $('#billsGrid').addEventListener('keydown', e => {
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    const target = e.target.closest('[data-billview]');
+    if(!target) return;
+    e.preventDefault();
+    openBillView(Number(target.dataset.billview));
+  });
   $$('[data-author-link]').forEach(b => b.addEventListener('click', () => {
     const url = b.dataset.authorLink;
     if(isNative) window.open(url, '_system');
@@ -1890,6 +2265,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* Android solo desbloquea el audio tras una interacción real. */
   document.addEventListener('pointerdown', () => {
     if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+  }, { passive:true });
+
+  /* En Android :hover no existe: .activo reproduce el realce visual al tocar. */
+  let tapTimer = null;
+  const tapSelector = 'button, .tab, .side-link, .switch, .bill-card, .history-item, .denom-row, .export-option, .scroll-fab, .currency-picker';
+  document.addEventListener('pointerdown', e => {
+    const el = e.target && e.target.closest ? e.target.closest(tapSelector) : null;
+    if(!el) return;
+    $$('.activo').forEach(n => { if(n !== el) n.classList.remove('activo'); });
+    el.classList.add('activo');
+    if(tapTimer) clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => el.classList.remove('activo'), 420);
   }, { passive:true });
 
   loadState();
@@ -1945,8 +2332,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btnCopyCalc').addEventListener('click', copyCurrentCalc);
   $('#btnSaveHistory').addEventListener('click', saveToHistory);
 
-  /* Un único menú de exportación, compartido por barra, historial y lateral. */
-  ['#btnExportTop', '#btnExport', '#sideExport'].forEach(sel => {
+  /* Un único menú de exportación, compartido por historial y barra lateral. */
+  ['#btnExport', '#sideExport'].forEach(sel => {
     const trigger = $(sel);
     if(trigger) trigger.addEventListener('click', e => {
       e.stopPropagation();
@@ -2006,6 +2393,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  $('#btnResetDenoms').addEventListener('click', resetDenoms);
+  $('#btnActivateAllDenoms').addEventListener('click', activateAllDenoms);
+  $('#btnDeactivateAllDenoms').addEventListener('click', deactivateAllDenoms);
+
   $('#addDenomForm').addEventListener('submit', e => {
     e.preventDefault();
     const input = $('#newDenomInput');
@@ -2016,8 +2407,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if(!state.allDenoms.includes(val)) state.allDenoms.push(val);
     if(!state.denoms.includes(val)) state.denoms.push(val);
-    state.denoms.sort((a,b)=>b-a);
-    state.allDenoms.sort((a,b)=>b-a);
+    state.denoms = sortDenoms(state.denoms);
+    state.allDenoms = sortDenoms(state.allDenoms);
     state.quantities[val] = state.quantities[val] || 0;
     input.value = '';
     saveState();
@@ -2032,6 +2423,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#prefConfetti').checked = state.prefs.confetti;
   $('#prefAutoSave').checked = state.prefs.autoSave;
   $('#prefSound').checked = state.prefs.sound;
+  const prefDenomOrder = $('#prefDenomOrder');
+  if(prefDenomOrder){
+    prefDenomOrder.checked = !!state.prefs.denomOrderAsc;
+    prefDenomOrder.addEventListener('change', e => {
+      state.prefs.denomOrderAsc = e.target.checked;
+      saveState();
+      renderBills($('#searchDenom').value);
+      renderDenomList();
+      renderStats();
+      toast(state.prefs.denomOrderAsc ? 'Denominaciones de menor a mayor' : 'Denominaciones de mayor a menor', 'info');
+      beep(720, 45);
+    });
+  }
   $('#prefConfetti').addEventListener('change', e => { state.prefs.confetti = e.target.checked; saveState(); });
   $('#prefAutoSave').addEventListener('change', e => { state.prefs.autoSave = e.target.checked; saveState(); });
   $('#prefSound').addEventListener('change', e => { state.prefs.sound = e.target.checked; saveState(); if(e.target.checked) beep(800, 60); });
@@ -2044,6 +2448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape' && $('#emptyExportOverlay').classList.contains('show')){ e.preventDefault(); closeEmptyExport(); return; }
     if(e.key === 'Escape' && isSaveFlashOpen()){ e.preventDefault(); return; }
+    if(e.key === 'Escape' && $('#billOverlay').classList.contains('show')){ e.preventDefault(); closeBillView(); return; }
     if(e.key === 'Escape' && $('#photoOverlay').classList.contains('show')){ e.preventDefault(); closePhoto(); return; }
     if(e.key === 'Escape' && $('#authorOverlay').classList.contains('show')){ e.preventDefault(); closeAuthor(); return; }
     if(e.key === 'Escape' && isHistoryDetailOpen()){ e.preventDefault(); closeHistoryDetail(); return; }
@@ -2051,6 +2456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(e.key === 'Escape' && isDrawerOpen()){ e.preventDefault(); closeDrawer(); return; }
     if(e.ctrlKey && e.key === 's'){ e.preventDefault(); saveToHistory(); }
     if(e.ctrlKey && e.key === 'k'){ e.preventDefault(); $('#searchDenom').focus(); }
+    if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l'){ e.preventDefault(); toggleTheme(); }
   });
 
   /* Al abrir la APK (tras pasar la intro) se busca versión nueva en silencio;
