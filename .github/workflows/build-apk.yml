@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -70,3 +72,26 @@ jobs:
           name: ChashierYudira
           path: ChashierYudira.apk
           if-no-files-found: error
+
+      - name: Leer versión
+        id: version
+        run: |
+          VERSION=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android/app/build.gradle | head -n 1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Versión detectada: $VERSION"
+
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" ChashierYudira.apk --clobber
+            gh release edit "$TAG" --title "ChashierYudira v$VERSION"
+          else
+            gh release create "$TAG" ChashierYudira.apk \
+              --title "ChashierYudira v$VERSION" \
+              --generate-notes \
+              --target "$GITHUB_SHA"
+          fi

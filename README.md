@@ -60,7 +60,7 @@ Al abrir la app (también en la APK) se muestra `www/intro.html` con esta coreog
 
 ## Compilar desde GitHub
 
-El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `push` a `main` y genera una APK **release firmada** (`assembleRelease`) con un keystore estable guardado en GitHub Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Eso permite actualizar instalando encima sin desinstalar. También puedes lanzarlo manualmente: pestaña **Actions** → *Compilar APK ChashierYudira* → **Run workflow**. El APK queda como artefacto descargable (`ChashierYudira`). Al cambiar de la firma debug anterior a esta firma estable hay que desinstalar una sola vez; las actualizaciones posteriores ya no.
+El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `push` a `main` y genera una APK **release firmada** (`assembleRelease`) con un keystore estable guardado en GitHub Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Eso permite actualizar instalando encima sin desinstalar. También puedes lanzarlo manualmente: pestaña **Actions** → *Compilar APK ChashierYudira* → **Run workflow**. El APK queda como artefacto descargable (`ChashierYudira`) **y se publica automáticamente en un release de GitHub** con el tag `v<versionName>` (por ejemplo `v2.0.5`). Si el release ya existe se reemplaza el APK y se actualiza el título; si no, se crea con notas automáticas. Al cambiar de la firma debug anterior a esta firma estable hay que desinstalar una sola vez; las actualizaciones posteriores ya no.
 
 ## Estructura
 
