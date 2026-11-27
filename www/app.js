@@ -73,6 +73,18 @@ function updateThumbIcon(theme){
   thumbIcon.className = 'fas ' + (theme === 'dark' ? 'fa-moon' : 'fa-sun');
 }
 
+/* Icono único de la titlebar: muestra el tema al que se cambiará al pulsar. */
+function updateWinThemeIcon(theme){
+  const btn = document.getElementById('winTheme');
+  if(!btn) return;
+  const icon = document.getElementById('winThemeIcon');
+  if(icon) icon.className = 'fas ' + (theme === 'dark' ? 'fa-sun' : 'fa-moon');
+  const label = theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('aria-checked', theme === 'dark' ? 'true' : 'false');
+}
+
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -81,10 +93,9 @@ function applyTheme(theme){
   mirrorToNative(THEME_KEY, theme);
   syncStatusBar(theme);
   updateThumbIcon(theme);
+  updateWinThemeIcon(theme);
   const toggle = document.getElementById('themeToggle');
   if(toggle) toggle.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
-  const prefTheme = document.getElementById('prefTheme');
-  if(prefTheme) prefTheme.checked = theme === 'light';
   const prefThemeIcon = document.getElementById('prefThemeIcon');
   if(prefThemeIcon) prefThemeIcon.className = 'fas ' + (theme === 'dark' ? 'fa-moon' : 'fa-sun');
   const prefThemeLabel = document.getElementById('prefThemeLabel');
@@ -419,6 +430,137 @@ function calcTotals(){
   return { total, bills };
 }
 
+/* ============================================================
+   REPARTO AUTOMÁTICO EN BILLETES
+   ============================================================ */
+const SPLIT_DP_LIMIT = 1000000;
+
+/* Menor número de billetes con programación dinámica. Para importes
+   muy grandes se usa el reparto rápido, que coincide con el óptimo
+   en el sistema canónico de denominaciones (1/3/5/10/20/...). */
+function minimalBillSplit(amount, denoms){
+  const list = [...new Set(denoms)]
+    .filter(d => Number.isInteger(d) && d > 0 && d <= amount)
+    .sort((a,b) => b-a);
+  if(!list.length) return null;
+
+  if(amount <= SPLIT_DP_LIMIT){
+    const INF = 1000000000;
+    const dp = new Int32Array(amount + 1).fill(INF);
+    const prev = new Int32Array(amount + 1).fill(-1);
+    dp[0] = 0;
+    for(let s = 1; s <= amount; s++){
+      for(const d of list){
+        if(d > s) continue;
+        const cand = dp[s - d] + 1;
+        if(cand < dp[s]){ dp[s] = cand; prev[s] = d; }
+      }
+    }
+    if(dp[amount] >= INF) return null;
+    const out = {};
+    let s = amount;
+    while(s > 0){
+      const d = prev[s];
+      if(d < 0) return null;
+      out[d] = (out[d] || 0) + 1;
+      s -= d;
+    }
+    return out;
+  }
+
+  const out = {};
+  let rest = amount;
+  for(const d of list){
+    const q = Math.floor(rest / d);
+    if(q > 0){ out[d] = q; rest -= q * d; }
+    if(rest === 0) break;
+  }
+  return rest === 0 ? out : null;
+}
+
+let splitModeResolve = null;
+function askSplitMode(amount, hasCents){
+  return new Promise(resolve => {
+    const aviso = hasCents
+      ? ` Los centavos se ignoran: solo se reparten billetes por ${state.currency.symbol}${amount.toLocaleString('es-MX')} ${state.currency.code}.`
+      : ` Importe: ${state.currency.symbol}${amount.toLocaleString('es-MX')} ${state.currency.code}.`;
+    $('#splitModalMsg').textContent = `Ya hay billetes contados.${aviso} ¿Los reemplazo o agrego el reparto a las cantidades actuales?`;
+    $('#splitOverlay').classList.add('show');
+    splitModeResolve = resolve;
+  });
+}
+function closeSplitMode(answer){
+  const overlay = $('#splitOverlay');
+  if(!overlay || !overlay.classList.contains('show')) return;
+  overlay.classList.remove('show');
+  if(splitModeResolve){ const resolve = splitModeResolve; splitModeResolve = null; resolve(answer); }
+}
+
+/* Aviso específico cuando el importe a repartir está vacío o no es válido. */
+let amountAlertInput = null;
+function showAmountAlert(msg){
+  const overlay = $('#amountAlertOverlay');
+  if(!overlay) return;
+  $('#amountAlertMsg').textContent = msg || 'Introduce un monto mayor que cero para distribuir.';
+  amountAlertInput = $('#splitAmount');
+  overlay.classList.add('show');
+}
+function closeAmountAlert(){
+  const overlay = $('#amountAlertOverlay');
+  if(!overlay || !overlay.classList.contains('show')) return false;
+  overlay.classList.remove('show');
+  if(amountAlertInput){ amountAlertInput.focus(); amountAlertInput = null; }
+  return true;
+}
+
+async function splitAmountIntoBills(){
+  const input = $('#splitAmount');
+  const text = (input.value || '').trim().replace(/\s/g, '').replace(',', '.');
+  const raw = Number(text);
+  if(!text || !Number.isFinite(raw) || raw <= 0){
+    showAmountAlert('Debes introducir un monto mayor que cero para distribuir.');
+    return;
+  }
+  const amount = Math.trunc(raw);
+  const hasCents = Math.abs(raw - amount) > 1e-9;
+  if(amount < 1){
+    showAmountAlert('El monto debe ser al menos 1 para repartir en billetes.');
+    return;
+  }
+
+  const activas = state.denoms.filter(d => Number.isFinite(d) && d > 0);
+  if(!activas.length){ toast('No hay denominaciones activas', 'error'); return; }
+  const reparto = minimalBillSplit(amount, activas);
+  if(!reparto){
+    toast('No se puede repartir exactamente con las denominaciones activas', 'error');
+    return;
+  }
+
+  const hasQuantities = Object.values(state.quantities).some(v => Number(v) > 0);
+  const modo = hasQuantities ? await askSplitMode(amount, hasCents) : 'replace';
+  if(!modo) return;
+
+  if(modo === 'replace'){
+    for(const k of Object.keys(state.quantities)) state.quantities[k] = 0;
+  }
+  for(const [d, q] of Object.entries(reparto)){
+    const denom = Number(d);
+    state.quantities[denom] = (Number(state.quantities[denom]) || 0) + q;
+  }
+  saveState();
+  renderBills($('#searchDenom').value);
+  refreshTotals();
+  renderStats();
+
+  const n = Object.values(reparto).reduce((a,b) => a+b, 0);
+  toast(
+    `${modo === 'add' ? 'Agregados' : 'Repartidos'} ${state.currency.symbol}${amount.toLocaleString('es-MX')} en ${n} billete${n === 1 ? '' : 's'}${hasCents ? ' · centavos ignorados' : ''}`,
+    'success'
+  );
+  beep(880, 70);
+  input.value = '';
+}
+
 let audioCtx = null;
 function getAudioCtx(){
   if(!audioCtx){
@@ -465,11 +607,17 @@ function toast(msg, type = 'info'){
 function confettiBurst(){
   if(!state.prefs.confetti) return;
   const colors = ['#5b8cff','#8b5cf6','#22c55e','#f59e0b','#ec4899','#06b6d4','#ffffff'];
-  /* El estallido nace del centro de la app (o de la pantalla si aún no hay contenedor). */
+  /* El estallido nace del centro del ÁREA VISIBLE de la app, no del contenedor
+     completo: si la calculadora es más alta que la pantalla, su centro cae
+     fuera del viewport y el confeti no se vería (web y APK por igual). */
   const app = $('.app');
   const rect = app && app.getBoundingClientRect ? app.getBoundingClientRect() : null;
-  const originX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
-  const originY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+  const left = rect ? Math.max(rect.left, 0) : 0;
+  const right = rect ? Math.min(rect.right, window.innerWidth) : window.innerWidth;
+  const top = rect ? Math.max(rect.top, 0) : 0;
+  const bottom = rect ? Math.min(rect.bottom, window.innerHeight) : window.innerHeight;
+  const originX = (left + right) / 2;
+  const originY = (top + bottom) / 2;
   const n = 58;
   for(let i = 0; i < n; i++){
     const p = document.createElement('div');
@@ -490,7 +638,7 @@ function confettiBurst(){
       { transform:'translate(-50%,-50%) scale(.4)', opacity:0 },
       { transform:`translate(calc(-50% + ${x*.35}px), calc(-50% + ${y*.35 - 40}px)) scale(1.25)`, opacity:1, offset:.18 },
       { transform:`translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(.2) rotate(${Math.random()*900}deg)`, opacity:0 }
-    ], { duration: 1000 + Math.random()*500, easing:'cubic-bezier(.16,.9,.25,1)' }).onfinish = () => p.remove();
+    ], { duration: 2200 + Math.random()*1000, easing:'cubic-bezier(.22,.61,.36,1)' }).onfinish = () => p.remove();
   }
 }
 
@@ -574,8 +722,8 @@ function renderBills(filter = ''){
           <button class="qty-btn" data-inc="${d}" aria-label="Sumar ${d}"><i class="fas fa-plus"></i></button>
         </div>
         <div class="bill-subtotal">
-          <span>${qty} × ${state.currency.symbol}${d.toLocaleString('es-MX')}</span>
-          <strong>${state.currency.symbol}${fmtMoney(subtotal)}</strong>
+          <span class="sub-pill">${qty} × ${state.currency.symbol}${d.toLocaleString('es-MX')}</span>
+          <strong class="sub-pill">${state.currency.symbol}${fmtMoney(subtotal)}</strong>
         </div>
       </div>
     `;
@@ -924,6 +1072,8 @@ function renderDenomList(){
       beep(500, 60);
     });
   });
+
+  updateToggleAllDenoms();
 }
 
 /* ---------- Acciones rápidas de denominaciones activas ---------- */
@@ -971,6 +1121,37 @@ function deactivateAllDenoms(){
     afterDenomsChanged('Todas las denominaciones desactivadas');
     beep(480, 60);
   });
+}
+
+function allAvailableDenoms(){
+  return sortDenoms([...new Set([...state.allDenoms, ...state.denoms, ...DEFAULT_DENOMS])]);
+}
+
+function allDenomsActive(){
+  const todas = allAvailableDenoms();
+  return todas.length > 0 && todas.every(d => state.denoms.includes(d));
+}
+
+/* Un solo botón: activa lo que falta o desactiva todo según el estado actual. */
+function updateToggleAllDenoms(){
+  const btn = $('#btnToggleAllDenoms');
+  if(!btn) return;
+  const activas = allDenomsActive();
+  const label = activas ? 'Desactivar todas' : 'Activar todas';
+  const labelEl = $('#toggleAllLabel');
+  const iconEl = $('#toggleAllIcon');
+  if(labelEl) labelEl.textContent = label;
+  if(iconEl) iconEl.className = 'fas ' + (activas ? 'fa-circle-xmark' : 'fa-circle-check');
+  btn.title = activas
+    ? 'Desactivar todas las denominaciones y poner cantidades en cero'
+    : 'Activar todas las denominaciones disponibles';
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('aria-checked', activas ? 'true' : 'false');
+}
+
+function toggleAllDenoms(){
+  if(allDenomsActive()) deactivateAllDenoms();
+  else activateAllDenoms();
 }
 
 /* ============================================================
@@ -1154,8 +1335,8 @@ function saveToHistoryQuiet(){
    MONEDA
    ============================================================ */
 function syncCurrencyLabels(symbol, code){
-  ['#currencySymbol', '#currencySymbolTop'].forEach(id => { const el = $(id); if(el) el.textContent = symbol; });
-  ['#currencyCodeLabel', '#currencyCodeLabelTop'].forEach(id => { const el = $(id); if(el) el.textContent = code; });
+  ['#currencySymbol', '#currencySymbolTop', '#splitSymbol'].forEach(id => { const el = $(id); if(el) el.textContent = symbol; });
+  ['#currencyCodeLabel', '#currencyCodeLabelTop', '#splitCode'].forEach(id => { const el = $(id); if(el) el.textContent = code; });
 }
 
 function syncCurrencySelect(){
@@ -1323,7 +1504,7 @@ function openBillView(denom){
   img.src = src;
   img.alt = `Billete de ${denom.toLocaleString('es-MX')} ${state.currency.code}`;
   const cap = $('#billCaption');
-  if(cap) cap.textContent = `Denominación Seleccionada: ${state.currency.symbol} ${denom.toFixed(2)} ${state.currency.code}`;
+  if(cap) cap.textContent = `${state.currency.symbol} ${denom.toFixed(2)} ${state.currency.code}`;
   overlay.classList.add('show');
   beep(820, 40);
 }
@@ -2174,6 +2355,8 @@ function initNativeUI(){
   if(App && typeof App.addListener === 'function'){
     App.addListener('backButton', ({ canGoBack } = {}) => {
       if($('#emptyExportOverlay').classList.contains('show')){ closeEmptyExport(); return; }
+      if($('#splitOverlay').classList.contains('show')){ closeSplitMode(null); return; }
+      if($('#amountAlertOverlay').classList.contains('show')){ closeAmountAlert(); return; }
       if(isSaveFlashOpen()){ return; }
       if(isHistoryDetailOpen()){ closeHistoryDetail(); return; }
       if(isExportMenuOpen()){ closeExportMenu(); return; }
@@ -2199,10 +2382,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(getPreferredTheme());
   const themeToggle = $('#themeToggle');
   if(themeToggle) themeToggle.addEventListener('click', toggleTheme);
-  const prefThemeToggle = $('#prefTheme');
-  if(prefThemeToggle) prefThemeToggle.addEventListener('change', () => {
-    if((document.documentElement.getAttribute('data-theme') === 'light') !== prefThemeToggle.checked) toggleTheme();
-  });
+  const winTheme = $('#winTheme');
+  if(winTheme) winTheme.addEventListener('click', toggleTheme);
 
   /* Barra lateral */
   updateDrawerState();
@@ -2223,6 +2404,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(state.prefs.sound) beep(750, 50);
     window.location.href = 'intro.html';
   });
+  const authorMail = $('#authorMail');
+  if(authorMail){
+    const asunto = `Sobre el APK Cashier de Yudira V${APP_VERSION}`;
+    authorMail.href = `mailto:kakycu@gmail.com?subject=${encodeURIComponent(asunto)}`;
+    authorMail.title = asunto;
+  }
   $('#sideAuthor').addEventListener('click', openAuthor);
   $('#authorClose').addEventListener('click', closeAuthor);
   $('#authorOk').addEventListener('click', closeAuthor);
@@ -2332,6 +2519,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btnCopyCalc').addEventListener('click', copyCurrentCalc);
   $('#btnSaveHistory').addEventListener('click', saveToHistory);
 
+  $('#btnSplitAmount').addEventListener('click', splitAmountIntoBills);
+  $('#splitAmount').addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); splitAmountIntoBills(); }
+  });
+  $('#splitCancel').addEventListener('click', () => closeSplitMode(null));
+  $('#splitAdd').addEventListener('click', () => closeSplitMode('add'));
+  $('#splitReplace').addEventListener('click', () => closeSplitMode('replace'));
+  $('#splitOverlay').addEventListener('click', e => { if(e.target.id === 'splitOverlay') closeSplitMode(null); });
+  $('#amountAlertOk').addEventListener('click', closeAmountAlert);
+  $('#amountAlertOverlay').addEventListener('click', e => { if(e.target.id === 'amountAlertOverlay') closeAmountAlert(); });
+
   /* Un único menú de exportación, compartido por historial y barra lateral. */
   ['#btnExport', '#sideExport'].forEach(sel => {
     const trigger = $(sel);
@@ -2394,8 +2592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('#btnResetDenoms').addEventListener('click', resetDenoms);
-  $('#btnActivateAllDenoms').addEventListener('click', activateAllDenoms);
-  $('#btnDeactivateAllDenoms').addEventListener('click', deactivateAllDenoms);
+  $('#btnToggleAllDenoms').addEventListener('click', toggleAllDenoms);
 
   $('#addDenomForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -2447,6 +2644,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape' && $('#emptyExportOverlay').classList.contains('show')){ e.preventDefault(); closeEmptyExport(); return; }
+    if(e.key === 'Escape' && $('#splitOverlay').classList.contains('show')){ e.preventDefault(); closeSplitMode(null); return; }
+    if(e.key === 'Escape' && $('#amountAlertOverlay').classList.contains('show')){ e.preventDefault(); closeAmountAlert(); return; }
     if(e.key === 'Escape' && isSaveFlashOpen()){ e.preventDefault(); return; }
     if(e.key === 'Escape' && $('#billOverlay').classList.contains('show')){ e.preventDefault(); closeBillView(); return; }
     if(e.key === 'Escape' && $('#photoOverlay').classList.contains('show')){ e.preventDefault(); closePhoto(); return; }

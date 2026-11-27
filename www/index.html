@@ -42,11 +42,7 @@
     </div>
     <div class="titlebar-spacer"></div>
     <div class="titlebar-actions">
-      <button class="theme-switch" id="themeToggle" role="switch" aria-checked="false" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">
-        <i class="fas fa-moon track-icon moon"></i>
-        <i class="fas fa-sun track-icon sun"></i>
-        <span class="thumb"><i class="fas fa-moon" id="thumbIcon"></i></span>
-      </button>
+      <button class="win-btn theme" id="winTheme" role="switch" aria-checked="false" title="Cambiar a tema oscuro" aria-label="Cambiar a tema oscuro"><i class="fas fa-moon" id="winThemeIcon"></i></button>
       <div class="win-btns">
         <button class="win-btn close" id="winClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
       </div>
@@ -58,8 +54,8 @@
     <button class="tab active" data-tab="calc" role="tab" aria-selected="true"><i class="fas fa-calculator"></i> Calculadora</button>
     <button class="tab" data-tab="history" role="tab" aria-selected="false"><i class="fas fa-clock-rotate-left"></i> Historial <span class="badge" id="histBadge">0</span></button>
     <button class="tab" data-tab="denoms" role="tab" aria-selected="false"><i class="fas fa-list-check"></i> Denomin.</button>
-    <button class="tab" data-tab="prefs" role="tab" aria-selected="false"><i class="fas fa-gear"></i> Prefcias.</button>
     <button class="tab" data-tab="stats" role="tab" aria-selected="false"><i class="fas fa-chart-simple"></i> Estadísticas</button>
+    <button class="tab" data-tab="prefs" role="tab" aria-selected="false"><i class="fas fa-gear"></i> Prefcias.</button>
   </div>
 
   <!-- TAB: CALCULADORA -->
@@ -83,6 +79,16 @@
           <i class="fas fa-check"></i>
         </button>
       </div>
+    </div>
+
+    <div class="split-bar" role="group" aria-label="Repartir importe en billetes">
+      <div class="split-label"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i><span>Repartir importe</span></div>
+      <div class="split-input">
+        <span class="split-cur" id="splitSymbol">$</span>
+        <input type="text" id="splitAmount" inputmode="decimal" placeholder="0.00" aria-label="Importe a repartir en billetes">
+        <span class="split-code" id="splitCode">CUP</span>
+      </div>
+      <button class="btn btn-primary" id="btnSplitAmount" title="Distribuir el importe en billetes"><i class="fas fa-arrows-split-up-and-left" aria-hidden="true"></i><span>Distribuir</span></button>
     </div>
 
     <div class="calc-toolbar">
@@ -147,8 +153,10 @@
       <div class="settings-title"><i class="fas fa-sliders"></i> Denominaciones activas</div>
       <div class="denom-actions" role="group" aria-label="Acciones de denominaciones">
         <button class="btn btn-sm" id="btnResetDenoms" title="Volver a las denominaciones originales"><i class="fas fa-rotate-left"></i><span>Restablecer</span></button>
-        <button class="btn btn-sm" id="btnActivateAllDenoms" title="Activar todas las denominaciones disponibles"><i class="fas fa-circle-check"></i><span>Activar todas</span></button>
-        <button class="btn btn-sm" id="btnDeactivateAllDenoms" title="Desactivar todas las denominaciones y poner cantidades en cero"><i class="fas fa-circle-xmark"></i><span>Desactivar todas</span></button>
+        <button class="btn btn-sm master-switch" id="btnToggleAllDenoms" role="switch" aria-checked="false" title="Activar o desactivar todas las denominaciones">
+          <span class="ms-track" aria-hidden="true"><span class="ms-thumb"><i class="fas fa-circle-check" id="toggleAllIcon"></i></span></span>
+          <span id="toggleAllLabel">Activar todas</span>
+        </button>
       </div>
       <div class="denom-list" id="denomList"></div>
       <form class="add-denom-form" id="addDenomForm">
@@ -168,7 +176,11 @@
           <strong><i class="fas fa-moon" id="prefThemeIcon"></i> <span id="prefThemeLabel">Tema oscuro</span></strong>
           <small id="prefThemeHint">Conmuta entre tema oscuro y claro</small>
         </div>
-        <label class="switch"><input type="checkbox" id="prefTheme" role="switch" aria-label="Activar tema claro"><span class="slider"></span></label>
+        <button class="theme-switch" id="themeToggle" role="switch" aria-checked="false" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">
+          <i class="fas fa-moon track-icon moon"></i>
+          <i class="fas fa-sun track-icon sun"></i>
+          <span class="thumb"><i class="fas fa-moon" id="thumbIcon"></i></span>
+        </button>
       </div>
       <div class="denom-row">
         <div class="denom-info">
@@ -282,6 +294,30 @@
   </div>
 </div>
 
+<!-- MODAL AVISO: monto inválido al repartir -->
+<div class="modal-overlay" id="amountAlertOverlay">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="amountAlertTitle" aria-describedby="amountAlertMsg">
+    <h3><i class="fas fa-circle-exclamation" style="color:var(--red)"></i> <span id="amountAlertTitle">Importe requerido</span></h3>
+    <p id="amountAlertMsg">Introduce un monto mayor que cero para distribuir.</p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="amountAlertOk"><i class="fas fa-check"></i> Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REPARTO: decide entre agregar o reemplazar cantidades -->
+<div class="modal-overlay" id="splitOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="splitModalTitle">
+    <h3><i class="fas fa-coins" style="color:var(--accent)"></i> <span id="splitModalTitle">Repartir importe</span></h3>
+    <p id="splitModalMsg"></p>
+    <div class="modal-actions split-modal-actions">
+      <button class="btn" id="splitCancel"><i class="fas fa-xmark"></i> Cancelar</button>
+      <button class="btn" id="splitAdd"><i class="fas fa-plus"></i> Agregar</button>
+      <button class="btn btn-primary" id="splitReplace"><i class="fas fa-arrows-rotate"></i> Reemplazar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL NOTA (reemplaza prompt() en móvil) -->
 <div class="modal-overlay" id="noteOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
@@ -317,9 +353,9 @@
         <i class="fas fa-magnifying-glass-plus"></i>
       </button>
       <div class="author-id">
-        <p class="author-role">Fundador · Ingeniería y Desarrollo</p>
+        <p class="author-role">Ingeniería y Desarrollo</p>
         <h3 id="authorName">Franklin Ramos Lamadrid</h3>
-        <span class="author-alias">Kaky</span>
+        <a class="author-mail" id="authorMail" href="mailto:kakycu@gmail.com?subject=Sobre%20el%20APK%20Cashier%20de%20Yudira%20V2.0.5"><i class="fas fa-envelope" aria-hidden="true"></i> Kaky® - kakycu@gmail.com</a>
       </div>
     </div>
     <div class="author-body">
@@ -351,12 +387,18 @@
 
 <!-- VISOR DE BILLETE: se abre al tocar el título de una tarjeta. -->
 <div class="modal-overlay" id="billOverlay">
-  <div class="modal bill-modal" role="dialog" aria-modal="true" aria-labelledby="billCaption">
+  <div class="modal bill-modal" role="dialog" aria-modal="true" aria-labelledby="billTitle billCaption">
     <button class="modal-close" id="billClose" title="Cerrar billete" aria-label="Cerrar billete"><i class="fas fa-xmark"></i></button>
-    <img id="billImage" src="" alt="">
-    <div class="photo-foot">
-      <strong id="billCaption">Billete</strong>
-      <small>Toca fuera de la imagen o usa Cerrar para volver</small>
+    <div class="bill-title">
+      <span class="bill-title-icon" aria-hidden="true"><i class="fas fa-money-bill-wave"></i></span>
+      <div class="bill-title-copy">
+        <strong id="billTitle">Visor de billete</strong>
+        <small id="billCaption">$ 5000.00 CUP</small>
+      </div>
+    </div>
+    <div class="bill-stage"><img id="billImage" src="" alt=""></div>
+    <div class="bill-foot">
+      <span class="bill-hint">Toca fuera de la imagen para cerrar</span>
       <button class="btn btn-primary" id="billOk"><i class="fas fa-check"></i><span>Cerrar</span></button>
     </div>
   </div>
