@@ -589,19 +589,62 @@ function beep(freq = 600, dur = 60){
   }catch(e){}
 }
 
-function toast(msg, type = 'info'){
+function toast(msg, type = 'info', action = null){
   const container = $('#toastContainer');
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   const icons = { success:'fa-circle-check', error:'fa-circle-xmark', info:'fa-circle-info' };
-  el.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
-  container.appendChild(el);
-  setTimeout(() => {
+  const icon = document.createElement('i');
+  icon.className = `fas ${icons[type] || icons.info}`;
+  const text = document.createElement('span');
+  text.textContent = msg;
+  el.append(icon, text);
+
+  let hideTimer = null;
+  let removeTimer = null;
+  const dismiss = () => {
+    clearTimeout(hideTimer);
+    clearTimeout(removeTimer);
+    el.remove();
+  };
+  const hide = () => {
+    clearTimeout(hideTimer);
     el.style.transition = 'opacity .3s, transform .3s';
     el.style.opacity = '0';
     el.style.transform = 'translateY(10px)';
-    setTimeout(() => el.remove(), 300);
-  }, 2600);
+    removeTimer = setTimeout(dismiss, 300);
+  };
+
+  if(action){
+    const link = document.createElement('a');
+    link.className = 'toast-action';
+    link.href = action.href || '#';
+    link.textContent = action.label || 'Descargar';
+    link.setAttribute('role', 'button');
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      if(typeof action.onClick === 'function') action.onClick(e);
+      dismiss();
+    });
+    el.appendChild(link);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'toast-close';
+    close.setAttribute('aria-label', 'Cerrar aviso');
+    close.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
+    close.addEventListener('click', dismiss);
+    el.appendChild(close);
+
+    /* El enlace necesita más tiempo que un aviso normal para poder tocarlo. */
+    hideTimer = setTimeout(hide, 9000);
+    el.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+    el.addEventListener('mouseleave', () => { hideTimer = setTimeout(hide, 1500); });
+  }else{
+    hideTimer = setTimeout(hide, 2600);
+  }
+
+  container.appendChild(el);
 }
 
 function confettiBurst(){
@@ -1555,6 +1598,10 @@ function compareVersions(a, b){
 const UPDATE_TIMEOUT_MS = 7000;
 let updateAssetUrl = RELEASES_PAGE;
 let lastAutoCheck = 0;
+function openUpdateUrl(){
+  if(isNative) window.open(updateAssetUrl, '_system');
+  else window.open(updateAssetUrl, '_blank', 'noopener');
+}
 async function checkForUpdates(opts){
   const auto = !!(opts && opts.auto);
   const btn = $('#sideUpdate');
@@ -1588,7 +1635,11 @@ async function checkForUpdates(opts){
       $('#updateMsg').textContent = `Tienes la versión V${APP_VERSION}. Se abrirá GitHub para descargar el APK actualizado.`;
       $('#updateOverlay').classList.add('show');
     }else if(!auto){
-      toast(`Ya tienes la versión más reciente (V${APP_VERSION})`, 'success');
+      toast(`Ya tienes la versión más reciente (V${APP_VERSION}).`, 'success', {
+        label: '¿Desea descargar la aplicación de todas maneras?',
+        href: updateAssetUrl,
+        onClick: openUpdateUrl
+      });
     }
   }catch(e){
     if(!auto){
@@ -2444,10 +2495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#updateOverlay').addEventListener('click', e => {
     if(e.target.id === 'updateOverlay') $('#updateOverlay').classList.remove('show');
   });
-  $('#updateDownload').addEventListener('click', () => {
-    if(isNative) window.open(updateAssetUrl, '_system');
-    else window.open(updateAssetUrl, '_blank', 'noopener');
-  });
+  $('#updateDownload').addEventListener('click', openUpdateUrl);
 
   /* Android solo desbloquea el audio tras una interacción real. */
   document.addEventListener('pointerdown', () => {
