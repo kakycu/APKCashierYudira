@@ -1549,7 +1549,31 @@ function openBillView(denom){
   const cap = $('#billCaption');
   if(cap) cap.textContent = `${state.currency.symbol} ${denom.toFixed(2)} ${state.currency.code}`;
   overlay.classList.add('show');
+  fitBillImage();
+  requestAnimationFrame(fitBillImage);
   beep(820, 40);
+}
+/* En horizontal el alto disponible es crítico: calculamos el hueco real
+   entre la cabecera, el pie y el padding para que el billete nunca se salga. */
+function fitBillImage(){
+  const img = $('#billImage');
+  const overlay = $('#billOverlay');
+  if(!img || !overlay || !overlay.classList.contains('show')) return;
+  const modal = img.closest('.bill-modal');
+  const stage = img.parentElement;
+  if(!modal || !stage) return;
+  const ov = getComputedStyle(overlay), st = getComputedStyle(stage);
+  const outer = (parseFloat(ov.paddingTop) || 0) + (parseFloat(ov.paddingBottom) || 0);
+  const inner = (parseFloat(st.paddingTop) || 0) + (parseFloat(st.paddingBottom) || 0);
+  const title = modal.querySelector('.bill-title');
+  const foot = modal.querySelector('.bill-foot');
+  const usado = (title ? title.offsetHeight : 0) + (foot ? foot.offsetHeight : 0) + outer + inner + 4;
+  const estimado = Math.max(90, window.innerHeight - usado);
+  img.style.maxHeight = estimado + 'px';
+  /* El modal ya tiene su altura máxima aplicada: ajustamos al hueco real
+     del escenario para que ni un billete muy ancho se pase por los bordes. */
+  const hueco = stage.clientHeight - inner - 2;
+  if(hueco > 0) img.style.maxHeight = Math.min(estimado, hueco) + 'px';
 }
 function closeBillView(){
   const overlay = $('#billOverlay');
@@ -2502,17 +2526,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
   }, { passive:true });
 
-  /* En Android :hover no existe: .activo reproduce el realce visual al tocar. */
-  let tapTimer = null;
+  /* En Android :hover no existe: .activo reproduce el realce visual al tocar.
+     Se mantiene mientras el dedo está presionado: si se quitara por temporizador
+     a mitad de la pulsación, la animación volvería a arrancar y parpadearía. */
+  let tapTarget = null;
   const tapSelector = 'button, .tab, .side-link, .switch, .bill-card, .history-item, .denom-row, .export-option, .scroll-fab, .currency-picker';
   document.addEventListener('pointerdown', e => {
     const el = e.target && e.target.closest ? e.target.closest(tapSelector) : null;
     if(!el) return;
-    $$('.activo').forEach(n => { if(n !== el) n.classList.remove('activo'); });
+    if(tapTarget && tapTarget !== el) tapTarget.classList.remove('activo');
+    tapTarget = el;
     el.classList.add('activo');
-    if(tapTimer) clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => el.classList.remove('activo'), 420);
   }, { passive:true });
+  const endTap = () => {
+    if(!tapTarget) return;
+    const el = tapTarget;
+    tapTarget = null;
+    setTimeout(() => el.classList.remove('activo'), 180);
+  };
+  document.addEventListener('pointerup', endTap, { passive:true });
+  document.addEventListener('pointercancel', endTap, { passive:true });
 
   loadState();
 
@@ -2712,5 +2745,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => checkForUpdates({ auto:true }), 1200);
   }
 
-  window.addEventListener('orientationchange', () => setTimeout(() => refreshTotals(), 200));
+  window.addEventListener('orientationchange', () => setTimeout(() => { refreshTotals(); fitBillImage(); }, 200));
+  window.addEventListener('resize', () => fitBillImage());
 });

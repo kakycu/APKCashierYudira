@@ -205,7 +205,7 @@ html[data-theme="light"] .theme-switch .track-icon.sun{opacity:0}
 .win-btn.theme:hover,.win-btn.theme.activo{background:var(--accent-tint);color:var(--accent);border-color:var(--accent)}
 html[data-theme="light"] .win-btn.theme{color:var(--btn-primary-a)}
 
-.tabs{display:flex;gap:4px;padding:10px 14px 0;border-bottom:1px solid var(--stroke-soft);overflow-x:auto;scrollbar-width:none;transition:var(--transition-theme)}
+.tabs{display:flex;flex:0 0 auto;gap:4px;padding:10px 14px 0;border-bottom:1px solid var(--stroke-soft);overflow-x:auto;scrollbar-width:none;transition:var(--transition-theme)}
 .tabs::-webkit-scrollbar{display:none}
 .tab{
   position:relative;border:none;background:transparent;color:var(--txt-2);
@@ -419,7 +419,7 @@ html[data-theme="light"] .btn-danger:hover{background:#fee2e2;border-color:#f871
 .bill-card{
   background:var(--card-bg);border:1.5px solid var(--card-border);border-radius:var(--radius-md);
   padding:14px;position:relative;overflow:hidden;
-  transition:var(--transition-theme), transform .2s;animation:fadeUp .35s ease;
+  transition:var(--transition-theme), transform .2s;
 }
 .bill-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-2));opacity:0;transition:.2s;z-index:2}
 .bill-card::after{
@@ -716,7 +716,7 @@ html[data-theme="dark"] .master-switch[aria-checked="true"] .ms-track{background
   .photo-modal{position:relative;padding:0;max-width:min(720px,calc(100vw - 40px));overflow:hidden;display:flex;flex-direction:column}
   .photo-modal img{display:block;width:auto;max-width:100%;max-height:74vh;object-fit:contain;background:var(--bg-1);margin:0 auto}
   /* Visor del billete completo: escenario amplio y pie limpio, solo con el importe. */
-  .bill-modal{position:relative;padding:0;max-width:min(900px,calc(100vw - 32px));overflow:hidden;display:flex;flex-direction:column;border-radius:22px}
+  .bill-modal{position:relative;padding:0;max-width:min(900px,calc(100vw - 32px));max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column;border-radius:22px}
   .bill-modal .modal-close{
     top:14px;right:14px;width:38px;height:38px;background:rgba(15,23,42,.55);
     border-color:rgba(255,255,255,.35);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);
@@ -725,12 +725,12 @@ html[data-theme="dark"] .master-switch[aria-checked="true"] .ms-track{background
   .bill-modal .modal-close:hover{background:rgba(15,23,42,.75);color:#fff;border-color:#fff}
   html[data-theme="light"] .bill-modal .modal-close:hover{background:#e8eef7;color:#1741b5;border-color:#1741b5}
   .bill-stage{
-    display:grid;place-items:center;padding:22px;
+    display:grid;place-items:center;padding:22px;flex:1 1 auto;min-height:0;overflow:hidden;
     background:radial-gradient(circle at 50% 25%,var(--bg-3),var(--bg-1));
     border-bottom:1px solid var(--stroke);transition:var(--transition-theme);
   }
   .bill-modal img{
-    display:block;width:min(100%,820px);height:auto;max-height:72vh;object-fit:contain;
+    display:block;width:auto;max-width:100%;height:auto;max-height:100%;object-fit:contain;
     border-radius:12px;box-shadow:0 20px 44px -18px rgba(0,0,0,.65);
   }
   .bill-title{
@@ -861,6 +861,11 @@ html[data-theme="dark"] .master-switch[aria-checked="true"] .ms-track{background
     .calc-toolbar{grid-template-columns:minmax(0,1fr)}
     .calc-tools{flex-wrap:wrap}
     .calc-tools .input-wrap{flex:1 1 100%}
+    /* Acciones de denominaciones en una sola fila, como el card del filtro. */
+    .denom-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:8px;flex-wrap:nowrap}
+    .denom-actions .btn,.denom-actions .master-switch{width:100%;min-width:0;justify-content:center}
+    .denom-actions .master-switch{padding:6px 10px 6px 7px}
+    #toggleAllLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .split-bar{padding:9px 10px;gap:8px}
     .split-label span{display:none}
     .total-panel-top{padding:10px 12px}
@@ -940,6 +945,21 @@ html[data-theme="dark"] .master-switch[aria-checked="true"] .ms-track{background
   @media (max-height:500px) and (orientation:landscape){
     body{align-items:flex-start}
     .app{max-height:calc(100dvh - 20px);overflow:auto}
+    /* Al scrollear en horizontal las pestañas deben seguir visibles. */
+    .tabs{position:sticky;top:0;z-index:20;background:var(--bg-2)}
+    /* En horizontal el visor debe respirar: menos padding y la imagen se
+       adapta a la altura libre en vez de usar 72vh. */
+    .modal-overlay{padding:8px}
+    .bill-modal{max-height:calc(100dvh - 16px)}
+    .bill-title{padding:8px 50px 8px 12px;gap:8px;flex:0 0 auto}
+    .bill-title-icon{width:30px;height:30px;border-radius:9px;font-size:13px}
+    .bill-title-copy strong{font-size:12px}
+    .bill-title-copy small{font-size:11px}
+    .bill-modal .modal-close{top:8px;right:8px;width:30px;height:30px}
+    .bill-stage{padding:8px}
+    .bill-foot{padding:8px 12px;flex:0 0 auto}
+    .bill-hint{display:none}
+    .bill-foot .btn{min-width:100px}
   }
   button:focus-visible, input:focus-visible, select:focus-visible, .chip:focus-visible{
     outline:2px solid var(--accent);outline-offset:2px;
@@ -1028,6 +1048,16 @@ html[data-theme="dark"] .master-switch[aria-checked="true"] .ms-track{background
   body.native button,body.native select,body.native .chip,body.native .qty-btn{touch-action:manipulation}
   body.native .toast-container{bottom:calc(24px + var(--safe-bottom))}
 
+  /* En horizontal el scroll debe ocurrir dentro de .app: así las pestañas
+     sticky se quedan arriba y no se ocultan al bajar a las denominaciones. */
+  @media (max-height:500px) and (orientation:landscape){
+    body.native{overflow:hidden}
+    body.native .app{
+      display:block;max-height:100dvh;overflow-x:hidden;overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+  }
+
   /* === BOTONES FLOTANTES PARA IR AL INICIO / FINAL === */
   .scroll-fabs{
     position:fixed;right:calc(16px + var(--safe-right));bottom:calc(18px + var(--safe-bottom));
@@ -1052,7 +1082,7 @@ html[data-theme="dark"] .master-switch[aria-checked="true"] .ms-track{background
   100%{filter:brightness(1)}
 }
 /* Estas reglas solo entran en juego cuando JS añade .activo al tocar. */
-button.activo,.tab.activo,.side-link.activo,.switch.activo,.bill-card.activo,
+button.activo,.tab.activo,.side-link.activo,.switch.activo,
   .history-item.activo,.denom-row.activo,.export-option.activo,.scroll-fab.activo,
   .currency-picker.activo{animation:toqueActivo .32s ease-out}
 .btn.activo{background:var(--bg-4);transform:translateY(-1px);border-color:var(--stroke-strong)}
@@ -1068,12 +1098,26 @@ html[data-theme="light"] .btn-primary.activo{background:linear-gradient(135deg,v
 .side-link.danger.activo{background:rgba(239,68,68,.13)}
 .qty-btn.activo{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(.94)}
 .bill-card.activo,.history-item.activo{border-color:var(--card-hover-border);transform:translateY(-2px);box-shadow:0 12px 30px -12px rgba(15,26,43,.25)}
+/* La marca de agua del billete usa mix-blend-mode: cualquier filtro o animación
+   sobre la tarjeta hace que el WebView de Android la repinte y parpadee.
+   El realce al tocar es estático mientras el dedo permanece presionado. */
+.bill-card.activo{
+  animation:none;border-color:var(--card-hover-border);
+  box-shadow:0 0 0 3px var(--accent-glow),0 12px 30px -12px rgba(15,26,43,.25);
+}
+body.native .bill-card.activo{transform:none;animation:none}
 .bill-remove.activo{opacity:1;background:#3a1d20;color:#ff8a8a}
 .export-option.activo{background:var(--accent-tint);border-color:var(--accent);transform:translateY(-1px)}
 .denom-row.activo{border-color:var(--card-hover-border)}
 .scroll-fab.activo{background:var(--accent-tint);color:var(--accent);border-color:var(--accent);transform:translateY(-2px)}
 .currency-picker.activo{background:var(--bg-4);border-color:var(--stroke-strong)}
 .switch.activo .slider{box-shadow:0 0 0 3px var(--accent-glow)}
+/* En Android el :hover queda "pegado" tras tocar: sin esto la marca de agua
+   cambia de opacidad al soltar el dedo y parece un parpadeo. */
+body.native .bill-card:hover:not(.activo){border-color:var(--card-border);transform:none;box-shadow:none}
+body.native .bill-card:hover:not(.activo)::before{opacity:0}
+body.native .bill-card:hover:not(.activo)::after{opacity:.5}
+html[data-theme="dark"] body.native .bill-card:hover:not(.activo)::after{opacity:.5}
 
 /* === BOTONES CON COLOR PROPIO POR TEMA (claro / oscuro) === */
 .btn{background:var(--btn-bg);border-color:var(--btn-border);color:var(--btn-txt)}
