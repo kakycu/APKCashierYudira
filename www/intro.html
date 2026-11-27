@@ -97,6 +97,12 @@
     }
   }
   .foto.is-on .foto-movil img{animation:respirar 3s ease-in-out 2s infinite}
+
+  /* Corazones confeti que se crean al tocar Yudira. */
+  .corazon-confeti{
+    position:fixed;pointer-events:none;z-index:9999;font-style:normal;
+    will-change:transform,opacity;
+  }
   .sheen{
     position:absolute;inset:0;opacity:0;pointer-events:none;
     background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.65) 48%,transparent 66%);
@@ -233,12 +239,62 @@
     var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var tactil = window.matchMedia && window.matchMedia('(hover: none)').matches;
     var hoverTimer = null;
+    var ultimoConfeti = 0;
 
     function pintar(paso){ barra.style.width = (paso * 100 / 3) + '%'; }
     function listo(){ intro.classList.add('listos'); pintar(3); }
 
-    /* Android no tiene :hover: el toque activa el mismo efecto durante un instante. */
-    function activarEfectoYudira(){
+    /* Corazones rojos con tamaños y opacidades distintos, moviéndose como confeti. */
+    function lanzarCorazones(e){
+      if(reducido || !fotoMovil) return;
+      var ahora = Date.now();
+      if(ahora - ultimoConfeti < 350) return;
+      ultimoConfeti = ahora;
+      var punto = e && (e.touches ? e.touches[0] : e);
+      var x, y;
+      if(punto && typeof punto.clientX === 'number'){
+        x = punto.clientX; y = punto.clientY;
+      }else{
+        var rect = fotoMovil.getBoundingClientRect();
+        x = rect.left + rect.width / 2; y = rect.top + rect.height / 2;
+      }
+      var colores = ['#ff2442','#ef4444','#ff5d73','#c9184a'];
+      var total = 18;
+      for(var i = 0; i < total; i++){
+        (function(indice){
+          var corazon = document.createElement('i');
+          var tam = 12 + Math.random() * 16;
+          var color = colores[indice % colores.length];
+          var opacidad = .45 + Math.random() * .5;
+          corazon.className = 'fas fa-heart corazon-confeti';
+          corazon.setAttribute('aria-hidden', 'true');
+          corazon.style.cssText = 'left:' + x + 'px;top:' + y + 'px;font-size:' + tam + 'px;color:' + color +
+            ';opacity:' + opacidad + ';text-shadow:0 0 10px ' + color + ';transform:translate(-50%,-50%);';
+          document.body.appendChild(corazon);
+          if(typeof corazon.animate !== 'function'){
+            setTimeout(function(){ corazon.remove(); }, 900);
+            return;
+          }
+          var angulo = (Math.PI * 2 * indice) / total + (Math.random() - .5) * .6;
+          var dist = 70 + Math.random() * 130;
+          var dx = Math.cos(angulo) * dist;
+          var dy = Math.sin(angulo) * dist - 40;
+          var caida = 160 + Math.random() * 180;
+          var giro = Math.random() * 720 - 360;
+          var anim = corazon.animate([
+            { transform:'translate(-50%,-50%) scale(.3) rotate(0deg)', opacity:0 },
+            { transform:'translate(calc(-50% + ' + (dx * .45) + 'px), calc(-50% + ' + (dy * .45) + 'px)) scale(1.1) rotate(' + (giro * .18) + 'deg)', opacity:opacidad, offset:.2 },
+            { transform:'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + (dy + caida * .35) + 'px)) scale(1) rotate(' + (giro * .55) + 'deg)', opacity:opacidad * .9, offset:.55 },
+            { transform:'translate(calc(-50% + ' + (dx * 1.25) + 'px), calc(-50% + ' + (dy + caida) + 'px)) scale(.25) rotate(' + giro + 'deg)', opacity:0 }
+          ], { duration:1800 + Math.random() * 900, easing:'cubic-bezier(.16,.62,.35,1)' });
+          anim.onfinish = function(){ corazon.remove(); };
+          setTimeout(function(){ corazon.remove(); }, 3000);
+        })(i);
+      }
+    }
+
+    /* Android no tiene :hover: el toque activa el mismo efecto y suelta corazones. */
+    function activarEfectoYudira(e){
       if(!fotoMovil || !foto.classList.contains('is-on')) return;
       fotoMovil.classList.add('activo');
       if(hoverTimer) clearTimeout(hoverTimer);
@@ -246,6 +302,7 @@
         fotoMovil.classList.remove('activo');
         hoverTimer = null;
       }, 1000);
+      lanzarCorazones(e);
     }
     if(fotoMovil){
       ['pointerdown','touchstart','click'].forEach(function(evt){
@@ -280,7 +337,7 @@
       /* En pantallas táctiles mostramos el efecto dos veces para que se vea sin tocar. */
       if(tactil){
         setTimeout(activarEfectoYudira, 500);
-        setTimeout(activarEfectoYudira, 1850);
+        setTimeout(activarEfectoYudira, 3000);
       }
     }, 3560);
   })();
