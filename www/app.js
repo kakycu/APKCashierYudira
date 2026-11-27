@@ -3,7 +3,7 @@
    ============================================================ */
 const STORAGE_KEY = 'visiones_cashflow_v2';
 const THEME_KEY = 'visiones_theme';
-const APP_VERSION = '2.0.2';
+const APP_VERSION = '2.0.3';
 const APP_NAME = 'ChashierYudira';
 const RELEASES_API = 'https://api.github.com/repos/kakycu/APKCashierYudira/releases/latest';
 const RELEASES_PAGE = 'https://github.com/kakycu/APKCashierYudira/releases';
@@ -1623,7 +1623,7 @@ async function buildDocumentBase64(dataRows){
     `xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
     `<Application>Cashier de Yudira</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop>` +
     `<Company>Unicornio Software®</Company><LinksUpToDate>false</LinksUpToDate>` +
-    `<SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>2.0.2</AppVersion>` +
+    `<SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>2.0.3</AppVersion>` +
     `</Properties>`;
 
   const zip = new ZipLib();
