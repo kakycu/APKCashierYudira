@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
+  /* Evitar el menú contextual del navegador al hacer clic derecho. */
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); }, { passive: false });
   /* En Tauri los enlaces externos deben abrirse con la app del sistema. */
   (function(){
     var ti = window.__TAURI_INTERNALS__;
