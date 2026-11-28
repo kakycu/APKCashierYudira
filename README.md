@@ -62,6 +62,10 @@ Al abrir la app (también en la APK) se muestra `www/intro.html` con esta coreog
 
 El workflow `.github/workflows/build-apk.yml` compila automáticamente en cada `push` a `main` y genera una APK **release firmada** (`assembleRelease`) con un keystore estable guardado en GitHub Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Eso permite actualizar instalando encima sin desinstalar. También puedes lanzarlo manualmente: pestaña **Actions** → *Compilar APK ChashierYudira* → **Run workflow**. El APK queda como artefacto descargable (`ChashierYudira`) **y se publica automáticamente en un release de GitHub** con el tag `v<versionName>` (por ejemplo `v2.0.5`). Si el release ya existe se reemplaza el APK y se actualiza el título; si no, se crea con notas automáticas. Al cambiar de la firma debug anterior a esta firma estable hay que desinstalar una sola vez; las actualizaciones posteriores ya no.
 
+## Versión ejecutable de escritorio (`EJECUTABLE VERSION/`)
+
+La carpeta `EJECUTABLE VERSION/` contiene dos proyectos: `ELECTRON/` (instalador NSIS con la web dentro de `app.asar`, sin extracción temporal) y `TAURI/` (un único `.exe` portable con WebView2, sin instalador). Ambos usan la misma `www/` de la raíz y no hay CDN: todos los recursos siguen siendo locales. En `ELECTRON/`, `npm run build` genera el instalador en `dist/`; en `TAURI/`, `npm run build:portable` genera `dist/Cashier de Yudira V2.0.5 (Tauri).exe`.
+
 ## Estructura
 
 - `index.html` (raíz): redirección a `www/intro.html` para abrir con doble clic.

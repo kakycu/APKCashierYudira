@@ -10,6 +10,20 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
+  /* En Tauri los enlaces externos deben abrirse con la app del sistema. */
+  (function(){
+    var ti = window.__TAURI_INTERNALS__;
+    if(!ti || typeof ti.invoke !== 'function') return;
+    var abrirOriginal = window.open;
+    window.open = function(url){
+      var destino = String(url || '');
+      if(/^(https?:|mailto:|tel:)/i.test(destino)){
+        try { ti.invoke('plugin:opener|open_url', { url: destino }).catch(function(){}); } catch(e){}
+        return null;
+      }
+      return abrirOriginal.apply(window, arguments);
+    };
+  })();
   /* La APK abre este archivo: mostramos first la animación de entrada. */
   (function(){
     try{

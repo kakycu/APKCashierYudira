@@ -1,0 +1,16 @@
+{
+  "name": "cashier-de-yudira-tauri",
+  "version": "2.0.5",
+  "private": true,
+  "description": "Versión Tauri de Cashier de Yudira V2.0.5",
+  "scripts": {
+    "sync:www": "node scripts/sync-www.js",
+    "tauri:dev": "npm run sync:www && tauri dev",
+    "tauri:build": "npm run sync:www && tauri build && node scripts/copy-portable.js",
+    "build": "npm run sync:www && tauri build && node scripts/copy-portable.js",
+    "build:portable": "npm run sync:www && tauri build && node scripts/copy-portable.js"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
